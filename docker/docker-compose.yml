@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: umis-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-umis_db}
+      POSTGRES_USER: ${POSTGRES_USER:-umis_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-umis_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-umis_user} -d ${POSTGRES_DB:-umis_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - umis-network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: umis-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - umis-network
+
+  minio:
+    image: minio/minio:RELEASE.2024-05-10T01-41-38Z
+    container_name: umis-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - umis-network
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: umis-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-umis_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-umis_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-umis_password}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-guest}
+      # UMIS_STORAGE_TYPE: S3 (default here, since this stack provisions MinIO) or LOCAL to
+      # write email bodies/attachments to the mounted umis_local_storage volume instead.
+      UMIS_STORAGE_TYPE: ${UMIS_STORAGE_TYPE:-S3}
+      UMIS_STORAGE_LOCAL_BASE_PATH: /app/storage
+      UMIS_STORAGE_ENDPOINT: http://minio:9000
+      UMIS_STORAGE_BUCKET: ${UMIS_STORAGE_BUCKET:-umis-emails}
+      UMIS_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      UMIS_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "8080:8080"
+    volumes:
+      # Only actually used when UMIS_STORAGE_TYPE=LOCAL; harmless and unused otherwise.
+      - umis_local_storage:/app/storage
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - umis-network
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: umis-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - umis-network
+
+networks:
+  umis-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  minio_data:
+  umis_local_storage:

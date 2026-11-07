@@ -1,0 +1,187 @@
+package com.po.processor.service;
+
+import com.po.processor.dto.UmisAcknowledgementRequest;
+import com.po.processor.dto.UmisProcessingStatus;
+import com.po.processor.dto.event.EmailIngestedPayloadDto;
+import com.po.processor.dto.event.UmisEventDto;
+import com.po.processor.entity.JobProcessingStatus;
+import com.po.processor.entity.ProcessedEvent;
+import com.po.processor.entity.ProcessingJob;
+import com.po.processor.entity.ProcessingJobAttachment;
+import com.po.processor.exception.EventProcessingException;
+import com.po.processor.repository.ProcessedEventRepository;
+import com.po.processor.repository.ProcessingJobRepository;
+import com.po.processor.storage.StorageReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * Core business service orchestrating PO email event validation, storage inspection,
+ * processing job lifecycle, and UMIS acknowledgement.
+ */
+@Service
+public class PoProcessingService {
+
+    private static final Logger log = LoggerFactory.getLogger(PoProcessingService.class);
+
+    private final ProcessingJobRepository jobRepository;
+    private final ProcessedEventRepository processedEventRepository;
+    private final StorageReader storageReader;
+    private final UmisClient umisClient;
+
+    public PoProcessingService(
+            ProcessingJobRepository jobRepository,
+            ProcessedEventRepository processedEventRepository,
+            StorageReader storageReader,
+            UmisClient umisClient
+    ) {
+        this.jobRepository = jobRepository;
+        this.processedEventRepository = processedEventRepository;
+        this.storageReader = storageReader;
+        this.umisClient = umisClient;
+    }
+
+    /**
+     * Ingests and processes an incoming EMAIL_INGESTED event from UMIS.
+     */
+    @Transactional
+    public ProcessingJob processEmailIngestedEvent(UmisEventDto<EmailIngestedPayloadDto> event) {
+        validateEvent(event);
+
+        UUID eventId = event.eventId();
+        String consumerName = umisClient.getConsumerId();
+
+        // 1. Idempotency guard: check if event was already processed
+        if (processedEventRepository.existsByEventIdAndConsumerName(eventId, consumerName)) {
+            log.info("Event {} already processed by consumer {}. Returning existing record.", eventId, consumerName);
+            return jobRepository.findByEventId(eventId).orElse(null);
+        }
+
+        EmailIngestedPayloadDto payload = event.payload();
+        UUID tenantId = payload.tenantId() != null ? payload.tenantId() : event.tenantId();
+        UUID emailId = payload.emailId();
+        UUID mailboxId = payload.mailboxId() != null ? payload.mailboxId() : event.mailboxId();
+
+        log.info("Initializing PO processing job for email: {}, tenant: {}, event: {}", emailId, tenantId, eventId);
+
+        // 2. Fetch or create processing job
+        ProcessingJob job = jobRepository.findByTenantIdAndUmisEmailId(tenantId, emailId)
+                .orElseGet(() -> new ProcessingJob(tenantId, emailId, mailboxId, eventId, event.occurredAt()));
+
+        job.setProcessingAttempts(job.getProcessingAttempts() + 1);
+        job.setStartedAt(Instant.now());
+        job.setProcessingStatus(JobProcessingStatus.PROCESSING);
+
+        // 3. Inspect email body in storage
+        verifyEmailBody(payload);
+
+        // 4. Process and attach attachment metadata from storage
+        processAttachments(job, payload);
+
+        // 5. Transition to READY_FOR_EXTRACTION
+        job.setProcessingStatus(JobProcessingStatus.READY_FOR_EXTRACTION);
+        job.setLastError(null);
+        ProcessingJob savedJob = jobRepository.save(job);
+
+        // 6. Record idempotency marker
+        processedEventRepository.save(new ProcessedEvent(eventId, consumerName));
+
+        // 7. Send downstream acknowledgement to UMIS
+        sendUmisAcknowledgement(savedJob, payload, eventId);
+
+        return savedJob;
+    }
+
+    private void validateEvent(UmisEventDto<EmailIngestedPayloadDto> event) {
+        if (event == null) {
+            throw new EventProcessingException("Event envelope must not be null");
+        }
+        if (event.eventId() == null) {
+            throw new EventProcessingException("Event ID is required in envelope");
+        }
+        if (!"EMAIL_INGESTED".equalsIgnoreCase(event.eventType())) {
+            throw new EventProcessingException("Unsupported event type: " + event.eventType());
+        }
+        if (event.payload() == null || event.payload().emailId() == null) {
+            throw new EventProcessingException("Event payload and email ID are required");
+        }
+    }
+
+    private void verifyEmailBody(EmailIngestedPayloadDto payload) {
+        String bodyRef = payload.bodyTextStorageRef() != null
+                ? payload.bodyTextStorageRef()
+                : payload.bodyHtmlStorageRef();
+
+        if (bodyRef != null && !storageReader.exists(bodyRef)) {
+            log.warn("Email body not found in storage for ref: {}", bodyRef);
+        }
+    }
+
+    private void processAttachments(ProcessingJob job, EmailIngestedPayloadDto payload) {
+        List<EmailIngestedPayloadDto.AttachmentReferenceDto> attachments = payload.attachments();
+        if (attachments == null || attachments.isEmpty()) {
+            return;
+        }
+
+        for (EmailIngestedPayloadDto.AttachmentReferenceDto ref : attachments) {
+            boolean fileExists = storageReader.exists(ref.storageReference());
+            ProcessingJobAttachment attachment = new ProcessingJobAttachment(
+                    ref.storageReference(),
+                    ref.fileName(),
+                    ref.contentType(),
+                    ref.size()
+            );
+
+            if (fileExists) {
+                attachment.setProcessingStatus(JobProcessingStatus.READY_FOR_EXTRACTION);
+            } else {
+                log.warn("Referenced attachment file is not accessible in storage: {}", ref.storageReference());
+                attachment.setProcessingStatus(JobProcessingStatus.FAILED);
+            }
+            job.addAttachment(attachment);
+        }
+    }
+
+    private void sendUmisAcknowledgement(
+            ProcessingJob job,
+            EmailIngestedPayloadDto payload,
+            UUID eventId
+    ) {
+        try {
+            UmisAcknowledgementRequest ackRequest = new UmisAcknowledgementRequest(
+                    umisClient.getConsumerId(),
+                    UmisProcessingStatus.PROCESSING,
+                    Instant.now(),
+                    job.getId().toString(),
+                    "PO processing job initialized and ready for extraction",
+                    eventId.toString()
+            );
+            umisClient.acknowledge(payload.emailId(), ackRequest);
+        } catch (Exception ex) {
+            // Log warning but do not roll back the local job transaction
+            log.warn("Failed to deliver UMIS acknowledgement for email {}: {}", payload.emailId(), ex.getMessage());
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ProcessingJob> getJobById(UUID jobId) {
+        return jobRepository.findById(jobId);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ProcessingJob> getJobByEmailId(UUID emailId) {
+        return jobRepository.findByUmisEmailId(emailId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProcessingJob> listAllJobs() {
+        return jobRepository.findAll();
+    }
+}

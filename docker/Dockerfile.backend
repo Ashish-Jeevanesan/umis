@@ -1,0 +1,21 @@
+# Dockerfile for UMIS Spring Boot Backend
+# Multi-stage build using Eclipse Temurin JDK 21
+
+FROM maven:3.9.6-eclipse-temurin-21 AS build
+WORKDIR /app
+COPY backend/pom.xml .
+RUN mvn dependency:go-offline -B
+COPY backend/src ./src
+RUN mvn clean package -DskipTests -B
+
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Create the local object-storage mount point owned by appuser before switching to it, so a
+# named volume mounted here on first run inherits correct (non-root) ownership. Unused when
+# UMIS_STORAGE_TYPE=S3, harmless to always create.
+RUN mkdir -p /app/storage && chown -R appuser:appgroup /app/storage
+USER appuser
+COPY --from=build /app/target/umis-backend-*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-XX:+UseZGC", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]

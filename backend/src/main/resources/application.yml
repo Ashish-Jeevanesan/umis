@@ -1,0 +1,57 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: umis-backend
+  profiles:
+    active: dev
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+umis:
+  security:
+    jwt:
+      secret: "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970"
+      expiration-ms: 86400000 # 24 hours
+    encryption-key: "umis-secret-key-for-credentials" # 32 chars in prod
+  storage:
+    type: "${UMIS_STORAGE_TYPE:LOCAL}" # LOCAL (default, zero-config) or S3 (MinIO/AWS S3)
+    local-base-path: "./storage"
+    endpoint: "http://localhost:9000"
+    region: "us-east-1"
+    access-key: "minioadmin"
+    secret-key: "minioadmin"
+    bucket-name: "umis-emails"
+    path-style-access: true
+    max-file-size-bytes: 26214400 # 25MB
+  rabbitmq:
+    exchange: "umis.events"
+    queue-email-ingested: "umis.queue.email-ingested"
+    queue-dlq: "umis.queue.dlq"
+    routing-key-prefix: "umis.events"
+  sync:
+    default-polling-interval-minutes: 5
+    max-retry-attempts: 3
+    lock-expiry-minutes: 15
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

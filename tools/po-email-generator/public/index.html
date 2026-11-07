@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UMIS - PO Email & PDF Generator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="app-header">
+      <div class="header-titles">
+        <h1>Purchase Order Email & PDF Generator</h1>
+        <p class="subtitle">Generate realistic PO test emails with PDF attachments for UMIS mailbox ingestion</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" id="btnLoadSample" class="btn btn-secondary">Load Sample PO</button>
+        <button type="button" id="btnClearForm" class="btn btn-outline">Clear</button>
+      </div>
+    </header>
+
+    <div id="smtpStatusBanner" class="alert-banner info-banner" style="display: none;">
+      <span id="smtpStatusText">Checking SMTP server status...</span>
+    </div>
+
+    <div id="statusMessage" class="alert-banner" style="display: none;"></div>
+
+    <form id="poForm" novalidate>
+      <!-- Section 1: Email Routing -->
+      <section class="card">
+        <h2 class="card-title">1. Email Delivery Settings</h2>
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label for="toEmail">To Email Address <span class="required">*</span></label>
+            <input type="email" id="toEmail" name="toEmail" required
+                   placeholder="e.g. your-connected-mailbox@gmail.com">
+            <small class="help-text">Destination address monitored by UMIS Gmail connector</small>
+          </div>
+          <div class="form-group span-2">
+            <label for="subject">Email Subject <span class="required">*</span></label>
+            <input type="text" id="subject" name="subject" required
+                   placeholder="e.g. Purchase Order PO-1001 – ABC Medical">
+          </div>
+          <div class="form-group">
+            <label for="senderName">Sender / Customer Name</label>
+            <input type="text" id="senderName" name="senderName" placeholder="e.g. ABC Medical Supplies">
+          </div>
+          <div class="form-group">
+            <label for="customerEmail">Sender Reply-To Email</label>
+            <input type="email" id="customerEmail" name="customerEmail" placeholder="e.g. purchasing@abcmed.com">
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: PO Header Information -->
+      <section class="card">
+        <h2 class="card-title">2. Purchase Order Information</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="poNumber">PO Number <span class="required">*</span></label>
+            <input type="text" id="poNumber" name="poNumber" required placeholder="e.g. PO-1001">
+          </div>
+          <div class="form-group">
+            <label for="poDate">PO Date <span class="required">*</span></label>
+            <input type="date" id="poDate" name="poDate" required>
+          </div>
+          <div class="form-group">
+            <label for="customerName">Company / Buyer Name <span class="required">*</span></label>
+            <input type="text" id="customerName" name="customerName" required placeholder="e.g. ABC Medical Hospital">
+          </div>
+          <div class="form-group">
+            <label for="currency">Currency</label>
+            <select id="currency" name="currency">
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="GBP">GBP (£)</option>
+              <option value="CAD">CAD ($)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="paymentTerms">Payment Terms</label>
+            <input type="text" id="paymentTerms" name="paymentTerms" placeholder="e.g. Net 30, Net 60">
+          </div>
+          <div class="form-group">
+            <label for="deliveryDate">Requested Delivery Date</label>
+            <input type="date" id="deliveryDate" name="deliveryDate">
+          </div>
+          <div class="form-group span-2">
+            <label for="billingAddress">Billing Address</label>
+            <textarea id="billingAddress" name="billingAddress" rows="2"
+                      placeholder="123 Healthcare Blvd, Suite 400, Chicago, IL 60601"></textarea>
+          </div>
+          <div class="form-group span-2">
+            <label for="shippingAddress">Shipping Address</label>
+            <textarea id="shippingAddress" name="shippingAddress" rows="2"
+                      placeholder="Warehouse Dock B, 125 Healthcare Blvd, Chicago, IL 60601"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: Line Items -->
+      <section class="card">
+        <div class="section-header-inline">
+          <h2 class="card-title">3. Line Items</h2>
+          <button type="button" id="btnAddItem" class="btn btn-sm btn-secondary">+ Add Line Item</button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="items-table" id="itemsTable">
+            <thead>
+              <tr>
+                <th style="width: 22%;">Product Code</th>
+                <th style="width: 38%;">Description</th>
+                <th style="width: 12%;">Qty</th>
+                <th style="width: 14%;">Unit Price</th>
+                <th style="width: 14%;">Total</th>
+                <th style="width: 50px;"></th>
+              </tr>
+            </thead>
+            <tbody id="itemsTableBody">
+              <!-- Rendered dynamically by app.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Totals Summary Grid -->
+        <div class="summary-container">
+          <div class="notes-block">
+            <label for="additionalNotes">Additional Notes / Instructions</label>
+            <textarea id="additionalNotes" name="additionalNotes" rows="3"
+                      placeholder="Special shipping instructions, lot requirements, or standard terms..."></textarea>
+          </div>
+
+          <div class="totals-block">
+            <div class="summary-row">
+              <span class="summary-label">Subtotal:</span>
+              <span class="summary-value" id="subtotalDisplay">0.00</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">
+                Tax:
+                <input type="number" id="taxPercent" name="taxPercent" min="0" max="100" step="0.5"
+                       class="tax-input" placeholder="0">%
+              </span>
+              <span class="summary-value" id="taxAmountDisplay">0.00</span>
+            </div>
+            <div class="summary-row grand-total-row">
+              <span class="summary-label">Grand Total:</span>
+              <span class="summary-value" id="grandTotalDisplay">0.00</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Actions Footer -->
+      <footer class="form-footer">
+        <button type="button" id="btnPreviewPdf" class="btn btn-secondary">
+          <span>Preview PDF</span>
+        </button>
+        <button type="submit" id="btnSendEmail" class="btn btn-primary">
+          <span>Send Email with PO PDF</span>
+        </button>
+      </footer>
+    </form>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

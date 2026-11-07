@@ -1,0 +1,74 @@
+server:
+  port: ${SERVER_PORT:8085}
+  shutdown: graceful
+
+spring:
+  application:
+    name: po-processor
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/umis_db}
+    username: ${SPRING_DATASOURCE_USERNAME:umis_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:umis_password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 20000
+  flyway:
+    enabled: true
+    schemas: po_processor
+    default-schema: po_processor
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: po_processor
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+po:
+  rabbitmq:
+    exchange: ${PO_RABBITMQ_EXCHANGE:umis.events}
+    queue: ${PO_RABBITMQ_QUEUE:po-processor.queue.email-ingested}
+    routing-key: ${PO_RABBITMQ_ROUTING_KEY:umis.events.email.ingested}
+    dlx-exchange: ${PO_RABBITMQ_DLX_EXCHANGE:umis.dlx}
+    dlq-queue: ${PO_RABBITMQ_DLQ_QUEUE:po-processor.queue.dlq}
+    dlq-routing-key: ${PO_RABBITMQ_DLQ_ROUTING_KEY:po-processor.dlq}
+    prefetch-count: ${PO_RABBITMQ_PREFETCH:5}
+    max-retries: ${PO_RABBITMQ_MAX_RETRIES:3}
+  storage:
+    type: ${PO_STORAGE_TYPE:LOCAL}
+    local-base-path: ${PO_STORAGE_LOCAL_BASE_PATH:../backend/storage}
+
+umis:
+  base-url: ${UMIS_BASE_URL:http://localhost:8080}
+  consumer-id: ${UMIS_CONSUMER_ID:PO_PROCESSING}
+  auth:
+    email: ${UMIS_AUTH_EMAIL:admin@umis.local}
+    password: ${UMIS_AUTH_PASSWORD:Admin@123}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    com.po.processor: DEBUG
+    org.springframework.amqp: INFO
