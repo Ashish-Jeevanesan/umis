@@ -16,8 +16,13 @@ public record ProcessingJobResponseDto(
         UUID umisEmailId,
         UUID mailboxId,
         UUID eventId,
+        String emailSubject,
+        String emailSender,
+        String emailSenderName,
+        String emailRecipients,
         String processingStatus,
         int processingAttempts,
+        int attachmentCount,
         String lastError,
         Instant receivedAt,
         Instant startedAt,
@@ -32,6 +37,7 @@ public record ProcessingJobResponseDto(
             String originalFilename,
             String contentType,
             Long fileSize,
+            String fileHash,
             String processingStatus,
             Instant createdAt
     ) {
@@ -42,6 +48,7 @@ public record ProcessingJobResponseDto(
                     entity.getOriginalFilename(),
                     entity.getContentType(),
                     entity.getFileSize(),
+                    entity.getFileHash(),
                     entity.getProcessingStatus().name(),
                     entity.getCreatedAt()
             );
@@ -59,8 +66,13 @@ public record ProcessingJobResponseDto(
                 job.getUmisEmailId(),
                 job.getMailboxId(),
                 job.getEventId(),
+                job.getEmailSubject(),
+                job.getEmailSender(),
+                job.getEmailSenderName(),
+                job.getEmailRecipients(),
                 job.getProcessingStatus().name(),
                 job.getProcessingAttempts(),
+                attList.size(),
                 job.getLastError(),
                 job.getReceivedAt(),
                 job.getStartedAt(),

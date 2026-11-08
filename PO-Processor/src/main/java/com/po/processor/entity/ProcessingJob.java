@@ -65,7 +65,19 @@ public class ProcessingJob {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    @OneToMany(mappedBy = "processingJob", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Column(name = "email_subject", length = 500)
+    private String emailSubject;
+
+    @Column(name = "email_sender", length = 255)
+    private String emailSender;
+
+    @Column(name = "email_sender_name", length = 255)
+    private String emailSenderName;
+
+    @Column(name = "email_recipients", columnDefinition = "TEXT")
+    private String emailRecipients;
+
+    @OneToMany(mappedBy = "processingJob", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ProcessingJobAttachment> attachments = new ArrayList<>();
 
     public ProcessingJob() {
@@ -208,5 +220,37 @@ public class ProcessingJob {
 
     public void setAttachments(List<ProcessingJobAttachment> attachments) {
         this.attachments = attachments;
+    }
+
+    public String getEmailSubject() {
+        return emailSubject;
+    }
+
+    public void setEmailSubject(String emailSubject) {
+        this.emailSubject = emailSubject;
+    }
+
+    public String getEmailSender() {
+        return emailSender;
+    }
+
+    public void setEmailSender(String emailSender) {
+        this.emailSender = emailSender;
+    }
+
+    public String getEmailSenderName() {
+        return emailSenderName;
+    }
+
+    public void setEmailSenderName(String emailSenderName) {
+        this.emailSenderName = emailSenderName;
+    }
+
+    public String getEmailRecipients() {
+        return emailRecipients;
+    }
+
+    public void setEmailRecipients(String emailRecipients) {
+        this.emailRecipients = emailRecipients;
     }
 }

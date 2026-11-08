@@ -2,6 +2,8 @@
  * SMTP Email Dispatch Service using Nodemailer.
  */
 
+const path = require('path');
+const dotenv = require('dotenv');
 const nodemailer = require('nodemailer');
 
 /**
@@ -9,10 +11,19 @@ const nodemailer = require('nodemailer');
  * @returns {object} Transporter instance
  */
 function createTransporter() {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  // Reload .env dynamically so credential changes take effect immediately without restarting
+  dotenv.config({ path: path.join(__dirname, '..', '.env'), override: true });
+
+  const host = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const user = process.env.SMTP_USERNAME || '';
-  const pass = process.env.SMTP_PASSWORD || '';
+  const user = (process.env.SMTP_USERNAME || '').trim();
+  let pass = (process.env.SMTP_PASSWORD || '').trim();
+
+  // If password was wrapped in quotes, strip them
+  if ((pass.startsWith('"') && pass.endsWith('"')) || (pass.startsWith("'") && pass.endsWith("'"))) {
+    pass = pass.substring(1, pass.length - 1).trim();
+  }
+
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
   const transportOptions = {

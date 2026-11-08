@@ -12,12 +12,15 @@ import com.po.processor.exception.EventProcessingException;
 import com.po.processor.repository.ProcessedEventRepository;
 import com.po.processor.repository.ProcessingJobRepository;
 import com.po.processor.storage.StorageReader;
+import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -78,6 +81,12 @@ public class PoProcessingService {
         job.setProcessingAttempts(job.getProcessingAttempts() + 1);
         job.setStartedAt(Instant.now());
         job.setProcessingStatus(JobProcessingStatus.PROCESSING);
+        job.setEmailSubject(payload.subject());
+        job.setEmailSender(payload.sender());
+        job.setEmailSenderName(payload.senderName());
+        if (payload.recipients() != null && !payload.recipients().isEmpty()) {
+            job.setEmailRecipients(String.join(", ", payload.recipients()));
+        }
 
         // 3. Inspect email body in storage
         verifyEmailBody(payload);
@@ -138,6 +147,7 @@ public class PoProcessingService {
                     ref.contentType(),
                     ref.size()
             );
+            attachment.setFileHash(ref.fileHash());
 
             if (fileExists) {
                 attachment.setProcessingStatus(JobProcessingStatus.READY_FOR_EXTRACTION);
@@ -183,5 +193,48 @@ public class PoProcessingService {
     @Transactional(readOnly = true)
     public List<ProcessingJob> listAllJobs() {
         return jobRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<ProcessingJob> searchJobs(
+            JobProcessingStatus status,
+            String search,
+            Instant startDate,
+            Instant endDate,
+            org.springframework.data.domain.Pageable pageable
+    ) {
+        Specification<ProcessingJob> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (status != null) {
+                predicates.add(cb.equal(root.get("processingStatus"), status));
+            }
+            if (search != null && !search.isBlank()) {
+                String term = "%" + search.trim().toLowerCase() + "%";
+                Predicate subjectLike = cb.like(cb.lower(root.get("emailSubject")), term);
+                Predicate senderLike = cb.like(cb.lower(root.get("emailSender")), term);
+                Predicate senderNameLike = cb.like(cb.lower(root.get("emailSenderName")), term);
+                predicates.add(cb.or(subjectLike, senderLike, senderNameLike));
+            }
+            if (startDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("receivedAt"), startDate));
+            }
+            if (endDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("receivedAt"), endDate));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        return jobRepository.findAll(spec, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public com.po.processor.dto.PoDashboardSummaryDto getDashboardSummary() {
+        long total = jobRepository.count();
+        long pending = jobRepository.countByProcessingStatus(JobProcessingStatus.PENDING);
+        long processing = jobRepository.countByProcessingStatus(JobProcessingStatus.PROCESSING);
+        long ready = jobRepository.countByProcessingStatus(JobProcessingStatus.READY_FOR_EXTRACTION);
+        long completed = jobRepository.countByProcessingStatus(JobProcessingStatus.COMPLETED);
+        long failed = jobRepository.countByProcessingStatus(JobProcessingStatus.FAILED);
+
+        return new com.po.processor.dto.PoDashboardSummaryDto(total, pending, processing, ready, completed, failed);
     }
 }

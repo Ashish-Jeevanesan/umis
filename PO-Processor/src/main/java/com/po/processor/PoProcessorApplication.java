@@ -51,9 +51,7 @@ public class PoProcessorApplication {
                     envValue = envValue.substring(1, envValue.length() - 1);
                 }
 
-                if (System.getProperty(envKey) == null && System.getenv(envKey) == null) {
-                    System.setProperty(envKey, envValue);
-                }
+                System.setProperty(envKey, envValue);
             }
         } catch (Exception loadException) {
             System.err.println("Notice: Could not load .env file: " + loadException.getMessage());

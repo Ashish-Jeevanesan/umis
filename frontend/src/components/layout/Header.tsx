@@ -1,6 +1,7 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Mail, Shield, Building2, ChevronDown } from 'lucide-react';
+import { Mail, Shield, Building2, ChevronDown, FileSpreadsheet } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { currentUser, switchRole } = useAuth();
@@ -13,11 +14,41 @@ export const Header: React.FC = () => {
         </div>
         <div>
           <h1 className="text-base font-semibold text-white tracking-tight leading-none">
-            UMIS
+            UMIS Platform
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Universal Mailbox Integration Service</p>
+          <p className="text-xs text-slate-400 mt-1">Universal Mailbox & Document Processing</p>
         </div>
       </div>
+
+      {/* Top Module Switcher: UMIS vs PO Processor */}
+      <nav className="flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800">
+        <NavLink
+          to="/umis"
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              isActive
+                ? 'bg-sky-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`
+          }
+        >
+          <Mail className="w-3.5 h-3.5" />
+          <span>UMIS Integration</span>
+        </NavLink>
+        <NavLink
+          to="/po"
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              isActive
+                ? 'bg-amber-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`
+          }
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5" />
+          <span>PO Processor</span>
+        </NavLink>
+      </nav>
 
       <div className="flex items-center gap-4">
         {/* Role & Tenant Switcher for Testing / Demonstration */}

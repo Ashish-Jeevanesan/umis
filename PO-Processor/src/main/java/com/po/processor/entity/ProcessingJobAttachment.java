@@ -41,6 +41,9 @@ public class ProcessingJobAttachment {
     @Column(name = "file_size")
     private Long fileSize;
 
+    @Column(name = "file_hash", length = 128)
+    private String fileHash;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "processing_status", nullable = false, length = 50)
     private JobProcessingStatus processingStatus;
@@ -132,6 +135,14 @@ public class ProcessingJobAttachment {
 
     public void setProcessingStatus(JobProcessingStatus processingStatus) {
         this.processingStatus = processingStatus;
+    }
+
+    public String getFileHash() {
+        return fileHash;
+    }
+
+    public void setFileHash(String fileHash) {
+        this.fileHash = fileHash;
     }
 
     public Instant getCreatedAt() {

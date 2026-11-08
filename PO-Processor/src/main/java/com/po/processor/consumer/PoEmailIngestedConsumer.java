@@ -50,8 +50,12 @@ public class PoEmailIngestedConsumer {
 
         UmisEventDto<EmailIngestedPayloadDto> event;
         try {
+            String rawJson = messageBody.trim();
+            if (rawJson.startsWith("\"") && rawJson.endsWith("\"")) {
+                rawJson = objectMapper.readValue(rawJson, String.class);
+            }
             event = objectMapper.readValue(
-                    messageBody,
+                    rawJson,
                     new TypeReference<UmisEventDto<EmailIngestedPayloadDto>>() {}
             );
         } catch (Exception parseException) {

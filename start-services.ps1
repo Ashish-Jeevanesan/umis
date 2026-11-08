@@ -72,7 +72,10 @@ $datasourceEnvKeys = @(
 $storageEnvKeys = @(
     "UMIS_STORAGE_TYPE", "UMIS_STORAGE_LOCAL_BASE_PATH"
 )
-$forwardedEnvKeys = $oauthEnvKeys + $datasourceEnvKeys + $storageEnvKeys
+$rabbitmqEnvKeys = @(
+    "SPRING_RABBITMQ_HOST", "SPRING_RABBITMQ_PORT", "SPRING_RABBITMQ_USERNAME", "SPRING_RABBITMQ_PASSWORD"
+)
+$forwardedEnvKeys = $oauthEnvKeys + $datasourceEnvKeys + $storageEnvKeys + $rabbitmqEnvKeys
 $envFile = Join-Path $rootDirectory ".env"
 if (Test-Path $envFile) {
     Write-Host "Step 0: Loading OAuth credentials and datasource settings from .env..." -ForegroundColor Cyan
@@ -191,6 +194,11 @@ export default defineConfig({
         target: 'http://localhost:$TargetBackendPort',
         changeOrigin: true,
       },
+      '/po-api': {
+        target: 'http://localhost:8085',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/po-api/, '/api/v1'),
+      },
     },
   },
 });
@@ -291,7 +299,8 @@ Write-Host ""
 Write-Host "=============================================================" -ForegroundColor Green
 Write-Host "                  Services Launched Successfully!            " -ForegroundColor Green
 Write-Host "=============================================================" -ForegroundColor Green
-Write-Host "  * Frontend Dashboard : http://localhost:$frontendFreePort" -ForegroundColor White
+Write-Host "  * Frontend Dashboard : http://localhost:$frontendFreePort/umis" -ForegroundColor White
+Write-Host "  * PO Processor Mon.  : http://localhost:$frontendFreePort/po" -ForegroundColor White
 Write-Host "  * Backend Swagger UI : http://localhost:$backendFreePort/swagger-ui.html" -ForegroundColor White
 Write-Host "  * Actuator Health    : http://localhost:$backendFreePort/actuator/health" -ForegroundColor White
 Write-Host "=============================================================" -ForegroundColor Green

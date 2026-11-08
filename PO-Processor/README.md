@@ -151,16 +151,26 @@ The service will start on port **8085** (configurable via `SERVER_PORT`).
 Verify processing jobs and health status using the built-in REST API:
 
 - **Health Check**: `GET http://localhost:8085/api/v1/health`
-- **List All Jobs**: `GET http://localhost:8085/api/v1/processing-jobs`
+- **Dashboard Summary**: `GET http://localhost:8085/api/v1/dashboard/summary`
+- **List Jobs (with filtering & pagination)**: `GET http://localhost:8085/api/v1/processing-jobs?status=READY_FOR_EXTRACTION&search=PO&page=0&size=15`
 - **Get Job by ID**: `GET http://localhost:8085/api/v1/processing-jobs/{id}`
 - **Get Job by UMIS Email ID**: `GET http://localhost:8085/api/v1/processing-jobs/email/{emailId}`
 - **Actuator Health**: `GET http://localhost:8085/actuator/health`
 
 ---
 
-## 8. Automated Tests
+## 8. Frontend Integration
 
-Run the full verification test suite (19 tests covering validation, storage, path traversal, consumer ACKs/NACKs, dead-lettering, and database integration):
+PO Processor is monitored through the integrated UMIS React frontend on port `3000`:
+- **PO Processor Dashboard**: `http://localhost:3000/po`
+- **Job Details View**: `http://localhost:3000/po/jobs/:id`
+- **UMIS Integration Dashboard**: `http://localhost:3000/umis`
+
+---
+
+## 9. Automated Tests
+
+Run the full verification test suite (20 tests covering validation, storage, path traversal, consumer ACKs/NACKs, dead-lettering, and database integration):
 
 ```bash
 mvn test
