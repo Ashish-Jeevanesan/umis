@@ -80,7 +80,6 @@ public class PoProcessingService {
 
         job.setProcessingAttempts(job.getProcessingAttempts() + 1);
         job.setStartedAt(Instant.now());
-        job.setProcessingStatus(JobProcessingStatus.PROCESSING);
         job.setEmailSubject(payload.subject());
         job.setEmailSender(payload.sender());
         job.setEmailSenderName(payload.senderName());
@@ -88,24 +87,85 @@ public class PoProcessingService {
             job.setEmailRecipients(String.join(", ", payload.recipients()));
         }
 
-        // 3. Inspect email body in storage
+        // 3. UMIS ingests every email in the mailbox with no business filtering (that's
+        // intentionally out of its scope), so this is the only layer that can tell a
+        // purchase order apart from unrelated mail. Skip anything with no PO indicators
+        // in subject/sender/attachment names before any storage I/O or extraction is queued.
+        if (!looksLikePurchaseOrder(payload)) {
+            job.setProcessingStatus(JobProcessingStatus.SKIPPED);
+            job.setLastError(null);
+            ProcessingJob skippedJob = jobRepository.save(job);
+            processedEventRepository.save(new ProcessedEvent(eventId, consumerName));
+            sendUmisAcknowledgement(skippedJob, payload, eventId, UmisProcessingStatus.IGNORED,
+                    "Email does not appear to be a purchase order (no PO indicators in "
+                            + "subject, sender, or attachments); skipped without extraction.");
+            return skippedJob;
+        }
+
+        job.setProcessingStatus(JobProcessingStatus.PROCESSING);
+
+        // 4. Inspect email body in storage and record pointer
+        String strBodyRef = payload.bodyTextStorageRef() != null
+                ? payload.bodyTextStorageRef()
+                : payload.bodyHtmlStorageRef();
+        job.setBodyStorageRef(strBodyRef);
         verifyEmailBody(payload);
 
-        // 4. Process and attach attachment metadata from storage
+        // 5. Process and attach attachment metadata from storage
         processAttachments(job, payload);
 
-        // 5. Transition to READY_FOR_EXTRACTION
-        job.setProcessingStatus(JobProcessingStatus.READY_FOR_EXTRACTION);
+        // 6. Transition to QUEUED for database-backed worker claiming
+        job.setProcessingStatus(JobProcessingStatus.QUEUED);
         job.setLastError(null);
         ProcessingJob savedJob = jobRepository.save(job);
 
-        // 6. Record idempotency marker
+        // 7. Record idempotency marker
         processedEventRepository.save(new ProcessedEvent(eventId, consumerName));
 
-        // 7. Send downstream acknowledgement to UMIS
-        sendUmisAcknowledgement(savedJob, payload, eventId);
+        // 8. Send downstream acknowledgement to UMIS
+        sendUmisAcknowledgement(savedJob, payload, eventId, UmisProcessingStatus.PROCESSING,
+                "PO processing job initialized and ready for extraction");
 
         return savedJob;
+    }
+
+    // Mirrors the keyword family DocumentClassificationService already uses for its
+    // PURCHASE_ORDER classification, applied earlier (subject/sender/attachment names only,
+    // before any content is fetched) so non-PO mail never reaches storage I/O or extraction.
+    // Deliberately permissive: a legitimate PO with an unusual subject costs nothing extra
+    // today (same path as before this change), while a false "not a PO" would silently drop
+    // real business data - so this only skips when NONE of the signals look PO-like.
+    private static final List<String> PURCHASE_ORDER_KEYWORDS =
+            List.of("purchase_order", "purchase order", "po-", "po_");
+
+    private boolean looksLikePurchaseOrder(EmailIngestedPayloadDto payload) {
+        if (containsPurchaseOrderKeyword(payload.subject())
+                || containsPurchaseOrderKeyword(payload.sender())
+                || containsPurchaseOrderKeyword(payload.senderName())) {
+            return true;
+        }
+        List<EmailIngestedPayloadDto.AttachmentReferenceDto> attachments = payload.attachments();
+        if (attachments != null) {
+            for (EmailIngestedPayloadDto.AttachmentReferenceDto attachment : attachments) {
+                if (containsPurchaseOrderKeyword(attachment.fileName())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean containsPurchaseOrderKeyword(String value) {
+        if (value == null) {
+            return false;
+        }
+        String strLower = value.toLowerCase();
+        for (String keyword : PURCHASE_ORDER_KEYWORDS) {
+            if (strLower.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void validateEvent(UmisEventDto<EmailIngestedPayloadDto> event) {
@@ -162,15 +222,17 @@ public class PoProcessingService {
     private void sendUmisAcknowledgement(
             ProcessingJob job,
             EmailIngestedPayloadDto payload,
-            UUID eventId
+            UUID eventId,
+            UmisProcessingStatus status,
+            String message
     ) {
         try {
             UmisAcknowledgementRequest ackRequest = new UmisAcknowledgementRequest(
                     umisClient.getConsumerId(),
-                    UmisProcessingStatus.PROCESSING,
+                    status,
                     Instant.now(),
                     job.getId().toString(),
-                    "PO processing job initialized and ready for extraction",
+                    message,
                     eventId.toString()
             );
             umisClient.acknowledge(payload.emailId(), ackRequest);
@@ -183,6 +245,14 @@ public class PoProcessingService {
     @Transactional(readOnly = true)
     public Optional<ProcessingJob> getJobById(UUID jobId) {
         return jobRepository.findById(jobId);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ProcessingJob> getJobById(UUID jobId, UUID tenantId) {
+        if (tenantId == null) {
+            return jobRepository.findById(jobId);
+        }
+        return jobRepository.findByIdAndTenantId(jobId, tenantId);
     }
 
     @Transactional(readOnly = true)
@@ -203,8 +273,23 @@ public class PoProcessingService {
             Instant endDate,
             org.springframework.data.domain.Pageable pageable
     ) {
+        return searchJobs(null, status, search, startDate, endDate, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<ProcessingJob> searchJobs(
+            UUID tenantId,
+            JobProcessingStatus status,
+            String search,
+            Instant startDate,
+            Instant endDate,
+            org.springframework.data.domain.Pageable pageable
+    ) {
         Specification<ProcessingJob> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            if (tenantId != null) {
+                predicates.add(cb.equal(root.get("tenantId"), tenantId));
+            }
             if (status != null) {
                 predicates.add(cb.equal(root.get("processingStatus"), status));
             }
@@ -228,13 +313,34 @@ public class PoProcessingService {
 
     @Transactional(readOnly = true)
     public com.po.processor.dto.PoDashboardSummaryDto getDashboardSummary() {
-        long total = jobRepository.count();
-        long pending = jobRepository.countByProcessingStatus(JobProcessingStatus.PENDING);
-        long processing = jobRepository.countByProcessingStatus(JobProcessingStatus.PROCESSING);
-        long ready = jobRepository.countByProcessingStatus(JobProcessingStatus.READY_FOR_EXTRACTION);
-        long completed = jobRepository.countByProcessingStatus(JobProcessingStatus.COMPLETED);
-        long failed = jobRepository.countByProcessingStatus(JobProcessingStatus.FAILED);
+        return getDashboardSummary(null);
+    }
 
-        return new com.po.processor.dto.PoDashboardSummaryDto(total, pending, processing, ready, completed, failed);
+    @Transactional(readOnly = true)
+    public com.po.processor.dto.PoDashboardSummaryDto getDashboardSummary(UUID tenantId) {
+        long total = tenantId != null ? jobRepository.countByTenantId(tenantId) : jobRepository.count();
+        long pending = countStatus(tenantId, JobProcessingStatus.PENDING);
+        long queued = countStatus(tenantId, JobProcessingStatus.QUEUED);
+        long processing = countStatus(tenantId, JobProcessingStatus.PROCESSING);
+        long ready = countStatus(tenantId, JobProcessingStatus.READY_FOR_REVIEW);
+        long legacyReady = countStatus(tenantId, JobProcessingStatus.READY_FOR_EXTRACTION);
+        long duplicate = countStatus(tenantId, JobProcessingStatus.DUPLICATE);
+        long completed = countStatus(tenantId, JobProcessingStatus.COMPLETED);
+        long failed = countStatus(tenantId, JobProcessingStatus.FAILED);
+
+        long poIdentified = ready + legacyReady + completed;
+        long totalReady = ready + legacyReady;
+
+        return new com.po.processor.dto.PoDashboardSummaryDto(
+                total, poIdentified, totalReady, 0, 0, completed, duplicate, failed,
+                pending + queued, processing, totalReady, completed
+        );
+    }
+
+    private long countStatus(UUID tenantId, JobProcessingStatus status) {
+        if (tenantId != null) {
+            return jobRepository.countByTenantIdAndProcessingStatus(tenantId, status);
+        }
+        return jobRepository.countByProcessingStatus(status);
     }
 }

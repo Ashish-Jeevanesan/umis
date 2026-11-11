@@ -5,7 +5,7 @@ spring:
   application:
     name: po-processor-test
   datasource:
-    url: jdbc:h2:mem:po_test_db;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;INIT=CREATE SCHEMA IF NOT EXISTS po_processor
+    url: jdbc:h2:mem:po_test_db;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;INIT=CREATE SCHEMA IF NOT EXISTS po_processor\;CREATE ALIAS IF NOT EXISTS pg_advisory_xact_lock AS 'void lock(int k1, int k2) {}'
     driver-class-name: org.h2.Driver
     username: sa
     password: ""
@@ -39,6 +39,9 @@ po:
   storage:
     type: LOCAL
     local-base-path: ./target/test-storage
+  gemini:
+    enabled: false
+    api-key: ""
 
 umis:
   base-url: http://localhost:8080

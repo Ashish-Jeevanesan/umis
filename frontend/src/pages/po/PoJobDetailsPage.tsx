@@ -1,320 +1,225 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { poApi } from '../../api/poClient';
-import { PoStatusBadge } from '../../components/po/PoStatusBadge';
+import { PoActionHeader } from '../../components/po/detail/PoActionHeader';
+import { PoOverviewTab } from '../../components/po/detail/PoOverviewTab';
+import { PoExtractedDetailsTab } from '../../components/po/detail/PoExtractedDetailsTab';
+import { PoLineItemsTab } from '../../components/po/detail/PoLineItemsTab';
+import { PoComparisonTab } from '../../components/po/detail/PoComparisonTab';
+import { PoHospitalHistoryTab } from '../../components/po/detail/PoHospitalHistoryTab';
+import { PoDocumentsTab } from '../../components/po/detail/PoDocumentsTab';
+import { PoValidationAuditTab } from '../../components/po/detail/PoValidationAuditTab';
 import {
+  FileSpreadsheet,
+  FileText,
+  Layers,
+  GitCompare,
+  Building2,
+  Cpu,
+  ShieldCheck,
+  AlertCircle,
   ArrowLeft,
   RefreshCw,
-  Mail,
-  Paperclip,
-  Activity,
-  CheckCircle2,
-  AlertTriangle,
-  Send,
-  FileText,
-  Copy,
-  Hash,
+  Lock,
 } from 'lucide-react';
+
+type TabKey =
+  | 'overview'
+  | 'extracted'
+  | 'line_items'
+  | 'comparison'
+  | 'hospital_history'
+  | 'documents'
+  | 'validation_audit';
 
 export const PoJobDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabKey>('overview');
+
+  const { data: progressData } = useQuery({
+    queryKey: ['poJobProgress', id],
+    queryFn: () => poApi.getProgress(id!),
+    enabled: Boolean(id),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return (status === 'PROCESSING' || status === 'QUEUED' || status === 'PENDING' || status === 'READY_FOR_EXTRACTION') ? 1500 : false;
+    },
+  });
+
+  const isProcessing =
+    progressData?.status === 'PROCESSING' ||
+    progressData?.status === 'QUEUED' ||
+    progressData?.status === 'PENDING' ||
+    progressData?.status === 'READY_FOR_EXTRACTION';
 
   const {
-    data: job,
+    data: details,
     isLoading,
     isError,
     error,
     refetch,
-    isFetching,
   } = useQuery({
-    queryKey: ['poJob', id],
-    queryFn: () => poApi.getJobById(id!),
-    enabled: Boolean(id),
+    queryKey: ['poJobFullDetails', id],
+    queryFn: () => poApi.getJobFullDetails(id!),
+    enabled: Boolean(id) && !isProcessing,
   });
 
-  const formatDate = (dateStr: string | null | undefined) => {
-    if (!dateStr) return '—';
-    try {
-      return new Date(dateStr).toLocaleString('en-US', {
-        dateStyle: 'medium',
-        timeStyle: 'medium',
-      });
-    } catch {
-      return dateStr;
+  useEffect(() => {
+    if (progressData && !isProcessing && progressData.status !== 'FAILED') {
+      refetch();
     }
-  };
+  }, [progressData?.status, isProcessing, refetch]);
 
-  const formatFileSize = (bytes: number | null | undefined) => {
-    if (!bytes || bytes <= 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB'];
-    const idx = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-    return `${(bytes / Math.pow(1024, idx)).toFixed(1)} ${units[idx]}`;
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
-  if (isLoading) {
+  if (isProcessing) {
     return (
-      <div className="flex-1 p-6 flex items-center justify-center">
-        <div className="flex items-center gap-2 text-sm text-slate-400">
-          <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
-          <span>Loading processing job details...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (isError || !job) {
-    return (
-      <div className="flex-1 p-6 max-w-4xl mx-auto">
-        <button
-          onClick={() => navigate('/po')}
-          className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white mb-6"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Jobs</span>
-        </button>
-        <div className="p-6 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-300">
-          <h2 className="text-sm font-semibold mb-1">Job Not Found or Inaccessible</h2>
-          <p className="text-xs text-rose-400/80">
-            {error instanceof Error ? error.message : `Unable to load processing job with ID: ${id}`}
-          </p>
+      <main className="flex-1 p-6 overflow-y-auto bg-slate-950">
+        <div className="max-w-4xl mx-auto space-y-6 pt-12">
           <button
-            onClick={() => refetch()}
-            className="mt-4 px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-xs rounded-lg font-medium"
+            onClick={() => navigate('/po')}
+            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white"
           >
-            Retry Query
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to PO Dashboard</span>
           </button>
-        </div>
-      </div>
-    );
-  }
 
-  return (
-    <main className="flex-1 overflow-y-auto p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Navigation & Header Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/po')}
-              className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              title="Return to Jobs List"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div>
+          <div className="p-8 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-5">
               <div className="flex items-center gap-3">
-                <h1 className="text-lg font-bold text-white tracking-tight">
-                  {job.emailSubject || `PO Processing Job ${job.id.slice(0, 8)}`}
-                </h1>
-                <PoStatusBadge status={job.processingStatus} size="md" />
+                <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">PO Review Locked</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Document extraction and intelligence analysis underway
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-slate-400 font-mono mt-1">
-                Job ID: {job.id}
-                <button
-                  onClick={() => copyToClipboard(job.id)}
-                  className="ml-2 hover:text-white text-slate-500"
-                  title="Copy Job ID"
-                >
-                  <Copy className="w-3 h-3 inline" />
-                </button>
+              <div className="inline-flex items-center gap-2 px-3 py-1 text-xs font-semibold text-sky-400 bg-sky-500/10 border border-sky-500/30 rounded-lg">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-sky-400" />
+                <span>{progressData?.progressPercentage || 0}% Complete</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs text-slate-300">
+                <span className="font-semibold uppercase tracking-wider text-slate-400">
+                  Current Stage: <span className="text-sky-300">{progressData?.stage || 'INITIALIZING'}</span>
+                </span>
+                <span className="font-mono text-slate-400">{progressData?.progressPercentage || 0}%</span>
+              </div>
+              <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden p-0.5">
+                <div
+                  className="bg-gradient-to-r from-sky-500 to-indigo-500 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${progressData?.progressPercentage || 10}%` }}
+                />
+              </div>
+              <p className="text-xs text-slate-400 italic">
+                {progressData?.message || 'Processing incoming purchase order documents...'}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 text-xs text-slate-400 space-y-1">
+              <p className="font-semibold text-slate-300">Why is this page locked?</p>
+              <p>
+                To maintain financial accuracy and regulatory compliance, the purchase order review screen is restricted
+                until all OCR, AI understanding, line-item parsing, and balance reconciliation steps complete.
               </p>
             </div>
           </div>
+        </div>
+      </main>
+    );
+  }
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 transition-colors"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin text-amber-400' : ''}`} />
-              <span>Refresh</span>
+  if (isLoading) {
+    return (
+      <main className="flex-1 p-6 overflow-y-auto bg-slate-950">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="h-12 bg-slate-900 rounded-xl animate-pulse" />
+          <div className="h-64 bg-slate-900/60 rounded-xl animate-pulse" />
+        </div>
+      </main>
+    );
+  }
+
+  if (isError || !details) {
+    return (
+      <main className="flex-1 p-6 overflow-y-auto bg-slate-950">
+        <div className="max-w-7xl mx-auto space-y-4">
+          <button
+            onClick={() => navigate('/po')}
+            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Jobs</span>
+          </button>
+          <div className="p-6 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-300 text-xs flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0 text-rose-400" />
+            <div>
+              <p className="font-semibold text-sm">Failed to load PO details</p>
+              <p className="text-rose-300/80 mt-0.5">
+                {error instanceof Error ? error.message : 'Job not found or inaccessible.'}
+              </p>
+            </div>
+            <button onClick={() => refetch()} className="ml-auto underline font-medium">
+              Retry
             </button>
           </div>
         </div>
+      </main>
+    );
+  }
 
-        {/* Error Banner if job failed */}
-        {job.lastError && (
-          <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs">
-            <div className="flex items-center gap-2 font-semibold text-rose-200 mb-1">
-              <AlertTriangle className="w-4 h-4 text-rose-400" />
-              <span>Processing Error Encountered</span>
-            </div>
-            <p className="font-mono text-[11px] text-rose-300/90 whitespace-pre-wrap">{job.lastError}</p>
-          </div>
-        )}
+  const tabs: Array<{ key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+    { key: 'overview', label: 'Overview', icon: FileSpreadsheet },
+    { key: 'extracted', label: 'Extracted PO', icon: FileText },
+    { key: 'line_items', label: 'Line Items', icon: Layers },
+    { key: 'comparison', label: 'Email vs Attachment', icon: GitCompare },
+    { key: 'hospital_history', label: 'Hospital History', icon: Building2 },
+    { key: 'documents', label: 'Documents & OCR', icon: Cpu },
+    { key: 'validation_audit', label: 'Validation & Audit', icon: ShieldCheck },
+  ];
 
-        {/* 2-Column Info Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Card 1: Email Information */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-800/80 text-white font-semibold text-sm">
-              <Mail className="w-4 h-4 text-sky-400" />
-              <span>Ingested Email Information</span>
-            </div>
+  return (
+    <main className="flex-1 p-6 overflow-y-auto bg-slate-950">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Action Header */}
+        <PoActionHeader details={details} onRefresh={refetch} />
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Subject</span>
-                <span className="text-slate-200 font-medium">{job.emailSubject || '—'}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Sender</span>
-                  <span className="text-slate-200 font-mono text-[11px] truncate block">
-                    {job.emailSender || '—'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Sender Display Name</span>
-                  <span className="text-slate-200">{job.emailSenderName || '—'}</span>
-                </div>
-              </div>
-              <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Recipients</span>
-                <span className="text-slate-300 font-mono text-[11px]">{job.emailRecipients || '—'}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800/60">
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">UMIS Email ID</span>
-                  <span className="text-slate-400 font-mono text-[11px] truncate block" title={job.umisEmailId}>
-                    {job.umisEmailId}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Event ID</span>
-                  <span className="text-slate-400 font-mono text-[11px] truncate block" title={job.eventId}>
-                    {job.eventId}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 2: Processing Lifecycle & Timestamps */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-800/80 text-white font-semibold text-sm">
-              <Activity className="w-4 h-4 text-amber-400" />
-              <span>Processing Lifecycle</span>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Current Status</span>
-                  <div className="mt-1">
-                    <PoStatusBadge status={job.processingStatus} />
-                  </div>
-                </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Processing Attempts</span>
-                  <span className="text-slate-200 font-mono text-sm font-semibold">{job.processingAttempts}</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Received At</span>
-                  <span className="text-slate-300">{formatDate(job.receivedAt)}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Started At</span>
-                  <span className="text-slate-300">{formatDate(job.startedAt)}</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Completed At</span>
-                  <span className="text-slate-300">{formatDate(job.completedAt)}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Last Updated At</span>
-                  <span className="text-slate-300">{formatDate(job.updatedAt)}</span>
-                </div>
-              </div>
-
-              {/* UMIS Acknowledgement Card */}
-              <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 mt-2">
-                <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-300 mb-1">
-                  <Send className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>UMIS Downstream Acknowledgement</span>
-                </div>
-                <div className="text-[11px] text-slate-400 flex items-center justify-between">
-                  <span>Consumer: <strong className="text-slate-200">PO_PROCESSING</strong></span>
-                  <span className="text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Reported</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Tab Navigation */}
+        <div className="flex border-b border-slate-800 space-x-1 overflow-x-auto no-scrollbar">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                  isActive
+                    ? 'border-amber-500 text-amber-400 bg-amber-500/5'
+                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-amber-400' : 'text-slate-500'}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Attachments Section */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white font-semibold text-sm">
-              <Paperclip className="w-4 h-4 text-slate-400" />
-              <span>Email Attachments ({job.attachments?.length || 0})</span>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 bg-slate-950/40 text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
-                  <th className="py-2.5 px-4">Filename</th>
-                  <th className="py-2.5 px-4">MIME Type</th>
-                  <th className="py-2.5 px-4">Size</th>
-                  <th className="py-2.5 px-4">Storage Retrieval</th>
-                  <th className="py-2.5 px-4">File Hash (SHA-256)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                {!job.attachments || job.attachments.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-6 text-center text-slate-500">
-                      No attachments were received with this email message.
-                    </td>
-                  </tr>
-                ) : (
-                  job.attachments.map((att) => (
-                    <tr key={att.id} className="hover:bg-slate-800/30">
-                      <td className="py-3 px-4 font-medium text-white flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>{att.originalFilename || 'Unnamed Attachment'}</span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] text-slate-400">
-                        {att.contentType || 'application/octet-stream'}
-                      </td>
-                      <td className="py-3 px-4 whitespace-nowrap text-slate-300">
-                        {formatFileSize(att.fileSize)}
-                      </td>
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <PoStatusBadge status={att.processingStatus} />
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[10px] text-slate-500 max-w-xs truncate" title={att.fileHash || ''}>
-                        {att.fileHash ? (
-                          <span className="flex items-center gap-1">
-                            <Hash className="w-3 h-3 text-slate-600 shrink-0" />
-                            <span className="truncate">{att.fileHash}</span>
-                          </span>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+        {/* Tab Panels */}
+        <div>
+          {activeTab === 'overview' && <PoOverviewTab details={details} />}
+          {activeTab === 'extracted' && <PoExtractedDetailsTab details={details} onRefresh={refetch} />}
+          {activeTab === 'line_items' && <PoLineItemsTab details={details} />}
+          {activeTab === 'comparison' && <PoComparisonTab details={details} />}
+          {activeTab === 'hospital_history' && <PoHospitalHistoryTab details={details} />}
+          {activeTab === 'documents' && <PoDocumentsTab details={details} />}
+          {activeTab === 'validation_audit' && <PoValidationAuditTab details={details} />}
         </div>
       </div>
     </main>

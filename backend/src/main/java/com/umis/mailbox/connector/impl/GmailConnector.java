@@ -304,7 +304,8 @@ public class GmailConnector implements MailboxConnector {
             GmailPayloadParser.ParsedBody bodies = payloadParser.extractBodies(payloadNode);
             String bodyText = !bodies.text().isBlank() ? bodies.text() : snippet;
             String bodyHtml = !bodies.html().isBlank() ? bodies.html() : "<p>" + snippet + "</p>";
-            List<NormalizedAttachment> attachments = payloadParser.extractInlineAttachments(payloadNode);
+            List<GmailPayloadParser.GmailAttachmentRef> rawRefs = payloadParser.extractAttachmentReferences(payloadNode);
+            List<NormalizedAttachment> attachments = resolveGmailAttachments(headers, providerMessageId, rawRefs);
 
             return NormalizedEmail.create(
                     connection.getTenantId(), connection.getId(), MailboxProvider.GMAIL,
@@ -349,6 +350,44 @@ public class GmailConnector implements MailboxConnector {
     @Override
     public void disconnect(MailboxConnection connection, MailboxCredentials credentials) {
         log.info("Disconnected Gmail connection for {}", connection.getEmailAddress());
+    }
+
+    private List<NormalizedAttachment> resolveGmailAttachments(
+            HttpHeaders headers,
+            String providerMessageId,
+            List<GmailPayloadParser.GmailAttachmentRef> rawRefs
+    ) {
+        List<NormalizedAttachment> attachments = new ArrayList<>();
+        if (rawRefs == null) {
+            return attachments;
+        }
+
+        for (GmailPayloadParser.GmailAttachmentRef ref : rawRefs) {
+            byte[] bytes = ref.inlineData();
+            if ((bytes == null || bytes.length == 0) && ref.attachmentId() != null && !ref.attachmentId().isBlank()) {
+                bytes = downloadGmailAttachment(headers, providerMessageId, ref.attachmentId());
+            }
+            if (bytes != null && bytes.length > 0) {
+                String hash = HashUtils.sha256Hex(bytes);
+                attachments.add(NormalizedAttachment.of(ref.filename(), ref.mimeType(), bytes.length, hash, bytes));
+            }
+        }
+        return attachments;
+    }
+
+    private byte[] downloadGmailAttachment(HttpHeaders headers, String messageId, String attachmentId) {
+        try {
+            String url = GMAIL_BASE_URL + "/messages/" + messageId + "/attachments/" + attachmentId;
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+            JsonNode root = objectMapper.readTree(response.getBody());
+            String data = root.path("data").asText("");
+            return !data.isBlank() ? Base64.getUrlDecoder().decode(data) : null;
+        } catch (Exception ex) {
+            log.warn("Failed to download Gmail attachment {} for message {}: {}",
+                    attachmentId, messageId, ex.getMessage());
+            return null;
+        }
     }
 
     private String extractHeader(JsonNode root, String headerName, String defaultValue) {

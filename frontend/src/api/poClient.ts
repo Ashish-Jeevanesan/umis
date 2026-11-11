@@ -6,16 +6,23 @@ import {
   JobPageResponse,
   ProcessingJob,
   PoDashboardSummary,
-  JobListParams
+  JobListParams,
+  ProcessingJobFullDetails,
+  HospitalHistory,
+  JobProgressDto
 } from '../types/po';
 
 const PO_BASE_URL = import.meta.env.VITE_PO_API_BASE_URL || '/po-api';
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = localStorage.getItem('umis_auth_token');
+  const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders,
       ...options?.headers,
     },
   });
@@ -65,6 +72,58 @@ export const poApi = {
 
   getJobById: async (jobId: string): Promise<ProcessingJob> => {
     return fetchJson<ProcessingJob>(`${PO_BASE_URL}/processing-jobs/${encodeURIComponent(jobId)}`);
+  },
+
+  getJobFullDetails: async (jobId: string): Promise<ProcessingJobFullDetails> => {
+    return fetchJson<ProcessingJobFullDetails>(`${PO_BASE_URL}/processing-jobs/${encodeURIComponent(jobId)}/details`);
+  },
+
+  updateField: async (
+    jobId: string,
+    fieldName: string,
+    newValue: string,
+    reason?: string
+  ): Promise<{ message: string }> => {
+    return fetchJson<{ message: string }>(`${PO_BASE_URL}/processing-jobs/${encodeURIComponent(jobId)}/fields`, {
+      method: 'PUT',
+      body: JSON.stringify({ fieldName, newValue, reason }),
+    });
+  },
+
+  verifyJob: async (jobId: string, comments?: string): Promise<{ message: string }> => {
+    return fetchJson<{ message: string }>(`${PO_BASE_URL}/processing-jobs/${encodeURIComponent(jobId)}/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ comments }),
+    });
+  },
+
+  approveJob: async (jobId: string, comments?: string): Promise<{ message: string }> => {
+    return fetchJson<{ message: string }>(`${PO_BASE_URL}/processing-jobs/${encodeURIComponent(jobId)}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ comments }),
+    });
+  },
+
+  rejectJob: async (jobId: string, comments?: string): Promise<{ message: string }> => {
+    return fetchJson<{ message: string }>(`${PO_BASE_URL}/processing-jobs/${encodeURIComponent(jobId)}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ comments }),
+    });
+  },
+
+  reExtractJob: async (jobId: string): Promise<{ message: string }> => {
+    return fetchJson<{ message: string }>(`${PO_BASE_URL}/processing-jobs/${encodeURIComponent(jobId)}/re-extract`, {
+      method: 'POST',
+    });
+  },
+
+  getProgress: async (jobId: string): Promise<JobProgressDto> => {
+    return fetchJson<JobProgressDto>(`${PO_BASE_URL}/processing-jobs/${encodeURIComponent(jobId)}/progress`);
+  },
+
+  getHospitalHistory: async (hospitalId: string, tenantId?: string): Promise<HospitalHistory> => {
+    const query = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : '';
+    return fetchJson<HospitalHistory>(`${PO_BASE_URL}/hospitals/${encodeURIComponent(hospitalId)}/history${query}`);
   },
 
   getHealth: async (): Promise<{ status: string; service: string; timestamp: string }> => {

@@ -86,7 +86,7 @@ class PoProcessingIntegrationTest {
 
         assertNotNull(job);
         assertNotNull(job.getId());
-        assertEquals(JobProcessingStatus.READY_FOR_EXTRACTION, job.getProcessingStatus());
+        assertEquals(JobProcessingStatus.QUEUED, job.getProcessingStatus());
 
         // Verify in repository
         assertTrue(jobRepository.findById(job.getId()).isPresent());

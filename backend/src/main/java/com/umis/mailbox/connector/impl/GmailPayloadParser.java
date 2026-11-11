@@ -60,6 +60,50 @@ public class GmailPayloadParser {
     }
 
     /**
+     * Extracts all attachment references from Gmail payload, capturing both inline data and external attachment IDs.
+     *
+     * @param payloadNode JsonNode of the Gmail message payload
+     * @return list of Gmail attachment references
+     */
+    public List<GmailAttachmentRef> extractAttachmentReferences(JsonNode payloadNode) {
+        List<GmailAttachmentRef> alRefs = new ArrayList<>();
+        traversePartsForAttachmentRefs(payloadNode, alRefs);
+        return alRefs;
+    }
+
+    private void traversePartsForAttachmentRefs(
+            JsonNode partNode,
+            List<GmailAttachmentRef> alRefs
+    ) {
+        String filename = partNode.path("filename").asText("");
+        String mimeType = partNode.path("mimeType").asText("application/octet-stream");
+        String data = partNode.path("body").path("data").asText("");
+        String attachmentId = partNode.path("body").path("attachmentId").asText("");
+        long size = partNode.path("body").path("size").asLong(0);
+
+        if (!filename.isBlank()) {
+            byte[] inlineBytes = null;
+            if (!data.isBlank()) {
+                try {
+                    inlineBytes = Base64.getUrlDecoder().decode(data);
+                } catch (Exception ignored) {
+                    // Ignore corrupted inline data
+                }
+            }
+            if (inlineBytes != null || !attachmentId.isBlank()) {
+                alRefs.add(new GmailAttachmentRef(filename, mimeType, size, attachmentId, inlineBytes));
+            }
+        }
+
+        JsonNode parts = partNode.path("parts");
+        if (parts.isArray()) {
+            for (JsonNode childPart : parts) {
+                traversePartsForAttachmentRefs(childPart, alRefs);
+            }
+        }
+    }
+
+    /**
      * Extracts inline attachments whose bytes are already present in message parts.
      *
      * @param payloadNode JsonNode of the Gmail message payload
@@ -99,4 +143,12 @@ public class GmailPayloadParser {
     }
 
     public record ParsedBody(String text, String html) {}
+
+    public record GmailAttachmentRef(
+            String filename,
+            String mimeType,
+            long size,
+            String attachmentId,
+            byte[] inlineData
+    ) {}
 }

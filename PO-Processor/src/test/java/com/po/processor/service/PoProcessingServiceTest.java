@@ -1,5 +1,7 @@
 package com.po.processor.service;
 
+import com.po.processor.dto.UmisAcknowledgementRequest;
+import com.po.processor.dto.UmisProcessingStatus;
 import com.po.processor.dto.event.EmailIngestedPayloadDto;
 import com.po.processor.dto.event.UmisEventDto;
 import com.po.processor.entity.JobProcessingStatus;
@@ -13,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -85,7 +88,7 @@ class PoProcessingServiceTest {
         ProcessingJob resultJob = processingService.processEmailIngestedEvent(event);
 
         assertNotNull(resultJob);
-        assertEquals(JobProcessingStatus.READY_FOR_EXTRACTION, resultJob.getProcessingStatus());
+        assertEquals(JobProcessingStatus.QUEUED, resultJob.getProcessingStatus());
         assertEquals(1, resultJob.getAttachments().size());
         assertEquals(JobProcessingStatus.READY_FOR_EXTRACTION, resultJob.getAttachments().get(0).getProcessingStatus());
 
@@ -133,7 +136,7 @@ class PoProcessingServiceTest {
         );
 
         EmailIngestedPayloadDto payload = new EmailIngestedPayloadDto(
-                emailId, UUID.randomUUID(), tenantId, "Subject", "s@test.com", "Sender",
+                emailId, UUID.randomUUID(), tenantId, "Purchase Order PO-5001", "s@test.com", "Sender",
                 List.of(), "Snippet", null, null, true, List.of(att)
         );
         UmisEventDto<EmailIngestedPayloadDto> event = new UmisEventDto<>(
@@ -148,7 +151,7 @@ class PoProcessingServiceTest {
         ProcessingJob resultJob = processingService.processEmailIngestedEvent(event);
 
         assertNotNull(resultJob);
-        assertEquals(JobProcessingStatus.READY_FOR_EXTRACTION, resultJob.getProcessingStatus());
+        assertEquals(JobProcessingStatus.QUEUED, resultJob.getProcessingStatus());
         assertEquals(JobProcessingStatus.FAILED, resultJob.getAttachments().get(0).getProcessingStatus());
     }
 
@@ -161,5 +164,80 @@ class PoProcessingServiceTest {
                 null, "EMAIL_INGESTED", "1.0", Instant.now(), UUID.randomUUID(), UUID.randomUUID(), null
         );
         assertThrows(EventProcessingException.class, () -> processingService.processEmailIngestedEvent(nullIdEvent));
+    }
+
+    @Test
+    @DisplayName("Should skip extraction and acknowledge IGNORED for an email with no PO indicators")
+    void testNonPurchaseOrderEmailIsSkipped() {
+        UUID eventId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID emailId = UUID.randomUUID();
+
+        EmailIngestedPayloadDto.AttachmentReferenceDto resume = new EmailIngestedPayloadDto.AttachmentReferenceDto(
+                UUID.randomUUID(), "Resume_AshishJeevanesan.pdf", "application/pdf", 2048L,
+                "attachments/resume.pdf", "hash456"
+        );
+
+        EmailIngestedPayloadDto payload = new EmailIngestedPayloadDto(
+                emailId, UUID.randomUUID(), tenantId,
+                "Ashish Jeevanesan - Application for Opportunities at Marek Systems",
+                "nanubony@gmail.com", "Ashish J",
+                List.of("recipient@test.com"), "Please find my resume attached.",
+                "emails/body.txt", null, true, List.of(resume)
+        );
+
+        UmisEventDto<EmailIngestedPayloadDto> event = new UmisEventDto<>(
+                eventId, "EMAIL_INGESTED", "1.0", Instant.now(), tenantId, UUID.randomUUID(), payload
+        );
+
+        when(processedEventRepository.existsByEventIdAndConsumerName(eventId, "PO_PROCESSING")).thenReturn(false);
+        when(jobRepository.findByTenantIdAndUmisEmailId(tenantId, emailId)).thenReturn(Optional.empty());
+        when(jobRepository.save(any(ProcessingJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ProcessingJob resultJob = processingService.processEmailIngestedEvent(event);
+
+        assertNotNull(resultJob);
+        assertEquals(JobProcessingStatus.SKIPPED, resultJob.getProcessingStatus());
+        assertEquals(0, resultJob.getAttachments().size());
+
+        verify(storageReader, never()).exists(any());
+        verify(processedEventRepository).save(any(ProcessedEvent.class));
+
+        ArgumentCaptor<UmisAcknowledgementRequest> ackCaptor = ArgumentCaptor.forClass(UmisAcknowledgementRequest.class);
+        verify(umisClient).acknowledge(eq(emailId), ackCaptor.capture());
+        assertEquals(UmisProcessingStatus.IGNORED, ackCaptor.getValue().status());
+    }
+
+    @Test
+    @DisplayName("Should still process a PO-named attachment even with a generic subject")
+    void testPurchaseOrderAttachmentNameWithGenericSubjectIsProcessed() {
+        UUID eventId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID emailId = UUID.randomUUID();
+
+        EmailIngestedPayloadDto.AttachmentReferenceDto att = new EmailIngestedPayloadDto.AttachmentReferenceDto(
+                UUID.randomUUID(), "PO-1993.pdf", "application/pdf", 1024L, "attachments/po.pdf", "hash789"
+        );
+
+        EmailIngestedPayloadDto payload = new EmailIngestedPayloadDto(
+                emailId, UUID.randomUUID(), tenantId, "Please review", "sender@test.com", "Vendor",
+                List.of(), "See attached", "emails/body.txt", null, true, List.of(att)
+        );
+
+        UmisEventDto<EmailIngestedPayloadDto> event = new UmisEventDto<>(
+                eventId, "EMAIL_INGESTED", "1.0", Instant.now(), tenantId, UUID.randomUUID(), payload
+        );
+
+        when(processedEventRepository.existsByEventIdAndConsumerName(eventId, "PO_PROCESSING")).thenReturn(false);
+        when(jobRepository.findByTenantIdAndUmisEmailId(tenantId, emailId)).thenReturn(Optional.empty());
+        when(storageReader.exists("emails/body.txt")).thenReturn(true);
+        when(storageReader.exists("attachments/po.pdf")).thenReturn(true);
+        when(jobRepository.save(any(ProcessingJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ProcessingJob resultJob = processingService.processEmailIngestedEvent(event);
+
+        assertNotNull(resultJob);
+        assertEquals(JobProcessingStatus.QUEUED, resultJob.getProcessingStatus());
+        assertEquals(1, resultJob.getAttachments().size());
     }
 }

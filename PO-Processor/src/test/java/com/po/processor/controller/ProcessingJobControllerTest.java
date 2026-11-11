@@ -23,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ProcessingJobController.class)
+@org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc(addFilters = false)
 @DisplayName("Processing Job REST Controller Tests")
 class ProcessingJobControllerTest {
 
@@ -31,6 +32,15 @@ class ProcessingJobControllerTest {
 
     @MockBean
     private PoProcessingService processingService;
+
+    @MockBean
+    private com.po.processor.service.PoWorkflowService workflowService;
+
+    @MockBean
+    private com.po.processor.hospital.HospitalMasterService hospitalMasterService;
+
+    @MockBean
+    private com.po.processor.security.PoJwtTokenProvider tokenProvider;
 
     @Test
     @DisplayName("GET /api/v1/health should return UP status")
@@ -45,7 +55,7 @@ class ProcessingJobControllerTest {
     @DisplayName("GET /api/v1/dashboard/summary should return summary metrics")
     void testDashboardSummary() throws Exception {
         PoDashboardSummaryDto summary = new PoDashboardSummaryDto(10L, 1L, 2L, 5L, 1L, 1L);
-        when(processingService.getDashboardSummary()).thenReturn(summary);
+        when(processingService.getDashboardSummary(any())).thenReturn(summary);
 
         mockMvc.perform(get("/api/v1/dashboard/summary"))
                 .andExpect(status().isOk())
@@ -63,7 +73,7 @@ class ProcessingJobControllerTest {
         job.setEmailSubject("PO-Test-1");
         job.setEmailSender("buyer@test.com");
 
-        when(processingService.searchJobs(any(), any(), any(), any(), any()))
+        when(processingService.searchJobs(any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(job)));
 
         mockMvc.perform(get("/api/v1/processing-jobs?page=0&size=20"))
@@ -83,7 +93,7 @@ class ProcessingJobControllerTest {
         job.setId(jobId);
         job.setEmailSubject("Order 123");
 
-        when(processingService.getJobById(jobId)).thenReturn(Optional.of(job));
+        when(processingService.getJobById(org.mockito.ArgumentMatchers.eq(jobId), any())).thenReturn(Optional.of(job));
 
         mockMvc.perform(get("/api/v1/processing-jobs/{id}", jobId))
                 .andExpect(status().isOk())
@@ -95,7 +105,7 @@ class ProcessingJobControllerTest {
     @DisplayName("GET /api/v1/processing-jobs/{id} should return 404 when not found")
     void testGetJobByIdNotFound() throws Exception {
         UUID missingId = UUID.randomUUID();
-        when(processingService.getJobById(missingId)).thenReturn(Optional.empty());
+        when(processingService.getJobById(org.mockito.ArgumentMatchers.eq(missingId), any())).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/v1/processing-jobs/{id}", missingId))
                 .andExpect(status().isNotFound())

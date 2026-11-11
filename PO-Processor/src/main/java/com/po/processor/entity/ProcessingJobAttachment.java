@@ -25,6 +25,7 @@ public class ProcessingJobAttachment {
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "processing_job_id", nullable = false)
     private ProcessingJob processingJob;

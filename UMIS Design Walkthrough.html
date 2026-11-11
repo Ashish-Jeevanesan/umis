@@ -1,0 +1,267 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>UMIS Design Walkthrough</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one presentation stage (16:9-ish card) with a caption rail and a transport bar beneath, like a video player */
+:root{
+  --bg:#eef1f4; --stage:#ffffff; --ink:#14202b; --muted:#5b6876; --line:#d5dce3;
+  --accent:#0f6e8c; --accent-soft:#d9eef4; --warm:#c2621b; --warm-soft:#fbe9dc; --ok:#2e7d4f;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0c1319; --stage:#121c24; --ink:#e4ebf1; --muted:#93a2b0; --line:#25343f;
+  --accent:#4fb6d6; --accent-soft:#163240; --warm:#f0995a; --warm-soft:#3a2516; --ok:#6cc792; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c1319; --stage:#121c24; --ink:#e4ebf1; --muted:#93a2b0; --line:#25343f;
+  --accent:#4fb6d6; --accent-soft:#163240; --warm:#f0995a; --warm-soft:#3a2516; --ok:#6cc792; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1040px;margin:0 auto;padding-block:20px 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.brand b{color:var(--accent);font-weight:500}
+.counter{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.stage{background:var(--stage);border:1px solid var(--line);border-radius:10px;min-height:520px;padding:clamp(20px,4vw,44px);display:flex;flex-direction:column;gap:18px;position:relative;overflow:hidden}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+h1,h2{font-family:var(--display);margin:0;text-wrap:balance;line-height:1.08}
+h1{font-size:clamp(34px,6vw,60px);font-weight:700}
+h2{font-size:clamp(24px,3.6vw,36px);font-weight:700}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:28px;align-items:start}
+.grid.single{grid-template-columns:minmax(0,1fr)}
+@media (max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}.stage{min-height:0}}
+ul.pts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+ul.pts li{padding-left:18px;position:relative;max-width:62ch}
+ul.pts li::before{content:"";position:absolute;left:0;top:.62em;width:8px;height:2px;background:var(--accent)}
+code,.mono{font-family:var(--mono);font-size:.88em}
+code{background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+.lede{font-size:clamp(16px,2vw,19px);color:var(--muted);max-width:56ch;margin:0}
+.diagram{overflow-x:auto;min-width:0}
+.diagram svg{display:block;width:100%;min-width:520px;height:auto}
+svg text{font-family:var(--mono);font-size:12px;fill:var(--ink)}
+svg .box{fill:var(--stage);stroke:var(--line);stroke-width:1.5}
+svg .hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+svg .wm{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1.5}
+svg .ln{stroke:var(--muted);stroke-width:1.5;fill:none}
+svg .ah{fill:var(--muted)}
+svg .sub{fill:var(--muted);font-size:10.5px}
+svg .ttl{font-family:var(--body);font-weight:600;font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--ink)}
+.chip.on{border-color:var(--accent);color:var(--accent)}
+.chip.warn{border-color:var(--warm);color:var(--warm)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.tablewrap{overflow-x:auto;min-width:0}
+.pill{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.pill.g{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.pill.w{background:var(--warm-soft);color:var(--warm)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.col h3{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 6px;font-weight:500}
+.col p{margin:0;color:var(--muted);font-size:13.5px}
+.slide{display:flex;flex-direction:column;gap:18px;animation:in .45s ease both}
+@keyframes in{from{opacity:.0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.slide{animation:none}}
+.caption{background:var(--stage);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:12px 16px;color:var(--ink);font-size:15px;min-height:3.2em}
+.caption .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:2px}
+.transport{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+button{font-family:var(--body);font-size:14px;font-weight:500;border:1px solid var(--line);background:var(--stage);color:var(--ink);border-radius:6px;padding:8px 14px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--stage);min-width:96px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.progress{flex:1 1 200px;display:flex;gap:4px;min-width:0}
+.progress span{flex:1;height:5px;border-radius:3px;background:var(--line);cursor:pointer}
+.progress span.done{background:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.progress span.cur{background:var(--accent)}
+.note{font-size:13px;color:var(--warm)}
+.foot{font-size:12px;color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><b>UMIS</b> · Universal Mailbox Integration Service · design walkthrough</div>
+    <div class="counter" id="counter">1 / 13</div>
+  </div>
+  <section class="stage" id="stage" aria-live="polite"></section>
+  <div class="caption" id="caption"><span class="lbl">Narration</span><span id="captionText"></span></div>
+  <div class="transport">
+    <button id="prev" aria-label="Previous slide">◀ Prev</button>
+    <button id="play" class="primary">▶ Play</button>
+    <button id="next" aria-label="Next slide">Next ▶</button>
+    <button id="restart">Restart</button>
+    <div class="progress" id="progress" aria-label="Slide progress"></div>
+  </div>
+  <div class="note" id="noSpeech" hidden>Audio narration isn't supported in this browser. Use Next and Previous to read the slides.</div>
+  <div class="foot">Tip: use the arrow keys to move between slides and the space bar to play or pause. Narration uses your browser's built-in voice.</div>
+</div>
+
+<script>
+const ARROW='<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs>';
+
+const slides=[
+{t:"title",
+ html:`<div class="eyebrow">System design walkthrough</div>
+ <h1>Universal Mailbox Integration Service</h1>
+ <p class="lede">A multi-tenant service that connects customer mailboxes, normalizes every email and attachment, and hands them to downstream modules like the PO Processor through RabbitMQ.</p>
+ <div class="chips"><span class="chip">Java 21 · Spring Boot 3.3.4</span><span class="chip">PostgreSQL 16</span><span class="chip">RabbitMQ 3.13</span><span class="chip">MinIO / S3</span><span class="chip">React 18 · Vite</span></div>`,
+ n:"Welcome to the design walkthrough for UMIS, the Universal Mailbox Integration Service. Over the next few minutes we'll cover what it does, how it's built, how an email flows through it, and how the PO Processor builds on top of it."},
+
+{t:"Overview",
+ html:`<div class="eyebrow">Overview</div><h2>One ingestion layer for every mailbox</h2>
+ <div class="grid"><ul class="pts">
+ <li>Connects Microsoft 365, Gmail, IMAP and unified-API mailboxes per tenant.</li>
+ <li>Normalizes emails, deduplicates them, and stores bodies and attachments in object storage.</li>
+ <li>Publishes a versioned <code>EMAIL_INGESTED</code> event so consumers can react.</li>
+ <li>Gives global and tenant admins their own operational dashboards.</li></ul>
+ <div class="col" style="border:1px dashed var(--warm);border-radius:8px;padding:16px"><h3 style="color:var(--warm)">Scope boundary</h3><p>UMIS is strictly generic mailbox integration and ingestion. It does not parse POs or invoices. Business extraction, machine learning and classification live in consumer modules such as the PO Processor.</p></div></div>`,
+ n:"UMIS gives every tenant one place to connect their mailboxes, whether that's Microsoft 365, Gmail, or plain IMAP. It normalizes and deduplicates incoming mail, offloads bodies and attachments to object storage, and publishes an event downstream. One rule shapes the whole design: UMIS never does business extraction. Parsing purchase orders or invoices belongs to consumer modules."},
+
+{t:"Architecture",
+ html:`<div class="eyebrow">Architecture</div><h2>Two decoupled services joined by events</h2>
+ <div class="diagram"><svg viewBox="0 0 900 300" role="img" aria-label="Topology: mail sources to UMIS to RabbitMQ to PO Processor, with React frontend reading both">${ARROW}
+ <rect class="box" x="10" y="110" width="150" height="80" rx="6"/><text class="ttl" x="24" y="138">Email sources</text><text class="sub" x="24" y="158">M365 Graph · Gmail</text><text class="sub" x="24" y="174">IMAP · Unified API</text>
+ <rect class="hl" x="200" y="90" width="190" height="120" rx="6"/><text class="ttl" x="214" y="116">UMIS Core :8080</text><text class="sub" x="214" y="138">OAuth refresh · polling</text><text class="sub" x="214" y="154">SHA-256 dedup</text><text class="sub" x="214" y="170">S3 offload · outbox</text><text class="sub" x="214" y="192">schema: public</text>
+ <rect class="box" x="430" y="110" width="160" height="80" rx="6"/><text class="ttl" x="444" y="138">RabbitMQ :5672</text><text class="sub" x="444" y="158">exchange umis.events</text><text class="sub" x="444" y="174">DLX + DLQ</text>
+ <rect class="wm" x="630" y="90" width="255" height="120" rx="6"/><text class="ttl" x="644" y="116">PO Processor :8085</text><text class="sub" x="644" y="138">job leasing · bounded streams</text><text class="sub" x="644" y="154">PDF / DOCX extract · Gemini</text><text class="sub" x="644" y="170">dedupe · reconcile · review</text><text class="sub" x="644" y="192">schema: po_processor</text>
+ <rect class="box" x="300" y="245" width="430" height="44" rx="6"/><text class="ttl" x="316" y="272">React 18 frontend :3000  ·  /umis  ·  /po  ·  /po/jobs/:id</text>
+ <path class="ln" d="M160 150 H198" marker-end="url(#a)"/><path class="ln" d="M390 150 H428" marker-end="url(#a)"/><text class="sub" x="393" y="140">EMAIL_INGESTED</text>
+ <path class="ln" d="M590 150 H628" marker-end="url(#a)"/>
+ <path class="ln" d="M295 210 V243" marker-end="url(#a)"/><path class="ln" d="M757 210 V230 H732" marker-end="url(#a)"/>
+ </svg></div>`,
+ n:"Here's the big picture. Two autonomous Spring Boot services sit on Java 21. UMIS Core, on port 8080, pulls mail from the providers, deduplicates it, and writes to its own schema. It publishes an email ingested event to the RabbitMQ topic exchange. The PO Processor, on port 8085, consumes that event in its own schema. A single React front end gives operators a UMIS view and a PO view."},
+
+{t:"Provider connectors",
+ html:`<div class="eyebrow">Provider connectivity</div><h2>One <span class="mono">MailboxConnector</span> interface, five adapters</h2>
+ <div class="tablewrap"><table><thead><tr><th>Provider</th><th>Auth</th><th>Incremental sync</th><th>Push</th></tr></thead><tbody>
+ <tr><td>Microsoft 365 / Outlook</td><td>OAuth with PKCE</td><td>Graph delta queries</td><td>Webhooks, renewed ~every 3 days</td></tr>
+ <tr><td>Gmail / Workspace</td><td>OAuth 2.0</td><td>History API</td><td>Pub/Sub watch, renewed every 7 days</td></tr>
+ <tr><td>Generic IMAP</td><td>SSL/TLS, app password</td><td>UID-based</td><td>Polling</td></tr>
+ <tr><td>Unified Email API</td><td>Nylas / Unipile</td><td>Adapter interface</td><td>—</td></tr>
+ <tr><td>Mock sandbox</td><td>None</td><td>Simulated cursors</td><td>For local demos</td></tr></tbody></table></div>`,
+ n:"Every provider plugs in through one interface, the Mailbox Connector, resolved through a registry. Microsoft 365 uses Graph delta queries and webhooks. Gmail uses the History API with a Pub/Sub watch. IMAP syncs by message UID. There's also a unified-API adapter and a mock sandbox, so the whole system runs locally with no external credentials."},
+
+{t:"Ingestion flow",
+ html:`<div class="eyebrow">Primary flow</div><h2>From mailbox sync to a guaranteed event</h2>
+ <div class="diagram"><svg viewBox="0 0 900 330" role="img" aria-label="Sequence of ingestion steps">${ARROW}
+ ${["Sync scheduler","Connector","Ingestion service","Object storage","PostgreSQL","Outbox relay","RabbitMQ"].map((s,i)=>`<rect class="${i==2?'hl':'box'}" x="${10+i*127}" y="8" width="115" height="32" rx="5"/><text class="ttl" x="${18+i*127}" y="29" style="font-size:11.5px">${s}</text><path class="ln" style="stroke-dasharray:3 4;opacity:.6" d="M${67+i*127} 40 V320"/>`).join("")}
+ ${[[0,1,62,"acquire lock, fetch(cursor)"],[1,2,96,"new messages"],[2,2,130,"dedupe: hash + provider id"],[2,3,164,"put body + attachments"],[2,4,198,"email rows + outbox (one tx)"],[5,4,236,"poll unpublished"],[5,6,270,"publish EMAIL_INGESTED"],[5,4,304,"mark sent"]].map(([f,t,y,l])=>{const x1=67+f*127,x2=67+t*127;if(f===t)return`<path class="ln" d="M${x1} ${y-8} h28 v14 h-24" marker-end="url(#a)"/><text class="sub" x="${x1+34}" y="${y+2}">${l}</text>`;const d=x2>x1?-4:4;return`<path class="ln" d="M${x1} ${y} H${x2+d}" marker-end="url(#a)"/><text class="sub" x="${Math.min(x1,x2)+8}" y="${y-6}">${l}</text>`}).join("")}
+ </svg></div>`,
+ n:"This is the core ingestion sequence. A scheduler takes an atomic row lock on the mailbox's sync state, so two workers can't process the same mailbox. The connector fetches from the last cursor. The ingestion service deduplicates by content hash and provider message ID, writes bodies and attachments to object storage, then saves the email rows and an outbox record in a single transaction. A separate relay publishes outbox rows to RabbitMQ, which gives at-least-once delivery."},
+
+{t:"Event contract",
+ html:`<div class="eyebrow">Event contract</div><h2><span class="mono">EMAIL_INGESTED</span> v1.0</h2>
+ <div class="grid"><ul class="pts">
+ <li>Versioned envelope: <code>eventId</code>, <code>eventType</code>, <code>eventVersion</code>, <code>tenantId</code>, <code>mailboxId</code>.</li>
+ <li>Payload carries metadata and storage references, never attachment bytes.</li>
+ <li>Consumers download content through <code>/api/v1/emails/{id}/attachments/{attId}</code>.</li>
+ <li>Failures route through <code>umis.dlx</code> to <code>umis.queue.dlq</code>.</li></ul>
+ <pre class="mono" style="margin:0;background:var(--accent-soft);border-radius:8px;padding:14px;overflow-x:auto;font-size:12px;line-height:1.55">{
+  "eventType": "EMAIL_INGESTED",
+  "eventVersion": "1.0",
+  "tenantId": "1111…",
+  "payload": {
+    "subject": "Purchase Order PO-98421",
+    "bodyTextStorageRef": "emails/…/body.txt",
+    "attachments": [{
+      "fileName": "PO-98421.pdf",
+      "storageReference": "attachments/…",
+      "fileHash": "e3b0c442…"
+    }]
+  }
+}</pre></div>`,
+ n:"Every event follows a versioned envelope. The payload describes the email, its sender, and its attachments, but only as storage references and SHA-256 hashes. Binary content never travels through RabbitMQ. Consumers fetch it through the attachments API. Anything that can't be delivered ends up in the dead-letter queue."},
+
+{t:"Consumer acknowledgements",
+ html:`<div class="eyebrow">Downstream outcomes</div><h2>Each consumer reports back independently</h2>
+ <p class="lede">Consumers call <code>POST /api/v1/emails/{emailId}/acknowledgements</code> with a module, a status and an idempotency key.</p>
+ <div class="tablewrap"><table><thead><tr><th>Same email</th><th>Consumer module</th><th>Status</th></tr></thead><tbody>
+ <tr><td rowspan="3" class="mono">PO-98421 email</td><td>PO_PROCESSING</td><td><span class="pill g">SUCCESS</span></td></tr>
+ <tr><td>CRM</td><td><span class="pill w">REVIEW_REQUIRED</span></td></tr>
+ <tr><td>INVOICE_PROCESSING</td><td><span class="pill">IGNORED</span></td></tr></tbody></table></div>
+ <div class="chips"><span class="chip">PENDING</span><span class="chip">PROCESSING</span><span class="chip on">SUCCESS</span><span class="chip warn">FAILED</span><span class="chip">REVIEW_REQUIRED</span><span class="chip">IGNORED</span></div>`,
+ n:"After processing, each consumer reports its outcome back to UMIS with an idempotency key. Status is tracked per consumer module, so the same email can be a success for PO processing, need review in CRM, and be ignored by invoice processing, all at once. The dashboards count these independently."},
+
+{t:"Data model",
+ html:`<div class="eyebrow">Data model</div><h2>Two schemas, strictly isolated</h2>
+ <div class="cols">
+ <div class="col"><h3>public · UMIS Core</h3><ul class="pts mono" style="font-size:12.5px">
+ <li>t101_tenants</li><li>t201_mailboxes <span style="color:var(--muted)">(encrypted OAuth)</span></li><li>t301_emails</li><li>t302_attachments <span style="color:var(--muted)">(SHA-256)</span></li><li>t401_event_outbox</li></ul></div>
+ <div class="col"><h3 style="color:var(--warm)">po_processor · PO Intelligence</h3><ul class="pts mono" style="font-size:12.5px">
+ <li>processing_jobs <span style="color:var(--muted)">(leases, @Version)</span></li><li>extracted_purchase_orders + line items</li><li>po_patient / billing / shipping details</li><li>hospitals + hospital_aliases</li><li>po_extraction_runs · po_field_evidence</li><li>po_duplicate_detections · po_approval_history</li></ul></div></div>
+ <p class="foot" style="margin:0">Relational tables hold references and metadata only. Raw bodies and binaries live in MinIO or S3.</p>`,
+ n:"The data lives in two isolated PostgreSQL schemas. The public schema belongs to UMIS: tenants, mailboxes with encrypted credentials, emails, attachments, and the event outbox. The PO processor schema holds jobs, extracted purchase orders and line items, hospital master data, extraction telemetry, field evidence, duplicate detection, and the approval audit trail. Large binaries never go into the database."},
+
+{t:"PO Processor pipeline",
+ html:`<div class="eyebrow">Consumer example · PO Processor</div><h2>From event to a reviewable purchase order</h2>
+ <div class="diagram"><svg viewBox="0 0 900 250" role="img" aria-label="PO processor pipeline">${ARROW}
+ ${[["Consume + dedupe","umis_email_id","box"],["Lease job","atomic DB lock","box"],["Bounded read","25MB file / 100MB job","box"],["Extract","PDFBox ≤50pp · POI","box"],["Gemini","JSON, temp 0.1","wm"]].map(([a,b,c],i)=>`<rect class="${c}" x="${10+i*178}" y="20" width="160" height="62" rx="6"/><text class="ttl" x="${22+i*178}" y="46">${a}</text><text class="sub" x="${22+i*178}" y="66">${b}</text>${i<4?`<path class="ln" d="M${170+i*178} 51 H${186+i*178}" marker-end="url(#a)"/>`:''}`).join("")}
+ <path class="ln" d="M802 82 V120 H700" marker-end="url(#a)"/>
+ ${[["Review","ready / needs review","hl"],["Compare","body vs attachment","box"],["Persist","PO, lines, parties","box"],["Hospital match","canonical + alias","box"],["Duplicate check","advisory lock","box"]].map(([a,b,c],i)=>`<rect class="${c}" x="${10+i*140}" y="150" width="128" height="62" rx="6"/><text class="ttl" x="${20+i*140}" y="176" style="font-size:12px">${a}</text><text class="sub" x="${20+i*140}" y="196">${b}</text>${i>0?`<path class="ln" d="M${10+i*140} 181 H${142+(i-1)*140}" marker-end="url(#a)"/>`:''}`).join("")}
+ <path class="ln" d="M700 120 H640 V148" marker-end="url(#a)"/>
+ </svg></div>`,
+ n:"The PO Processor shows how a consumer builds on UMIS. It deduplicates incoming events, then workers claim jobs through atomic database leases. Attachments are streamed with hard limits of 25 megabytes per file and 100 megabytes per job. PDFs and Word files are extracted, then sent to Google Gemini for structured JSON. A PostgreSQL advisory lock guards duplicate and revision detection, hospitals are matched to master records, and the email body is compared against the attachment before the job lands in review."},
+
+{t:"Review workflow",
+ html:`<div class="eyebrow">Human in the loop</div><h2>Edit, verify, approve</h2>
+ <div class="grid"><ul class="pts">
+ <li>Any audited field edit invalidates the previous verification.</li>
+ <li>Verification runs math checks: line items must sum and balance.</li>
+ <li>Approval is gated on verification and supersedes older approved revisions.</li>
+ <li>Every action lands in <code>po_approval_history</code> and <code>po_field_edit_history</code>.</li></ul>
+ <div class="tablewrap"><table><thead><tr><th>Role</th><th>Can</th></tr></thead><tbody>
+ <tr><td class="mono">PO_VIEWER</td><td>Read dashboards</td></tr><tr><td class="mono">PO_REVIEWER</td><td>Edit extracted fields</td></tr>
+ <tr><td class="mono">PO_VERIFIER</td><td>Verify math consistency</td></tr><tr><td class="mono">PO_APPROVER</td><td>Approve POs</td></tr>
+ <tr><td class="mono">PO_ADMIN</td><td>Re-extract, settings</td></tr></tbody></table></div></div>`,
+ n:"Extraction is never the final word. A reviewer works through a seven-tab screen to correct fields, and any edit resets verification. Verification checks that line items and totals balance, and only then can an approver sign off. Approving a revised PO marks earlier approved revisions as superseded. Five roles separate viewing, editing, verifying, approving and admin work, and every step is audited."},
+
+{t:"Security",
+ html:`<div class="eyebrow">Security model</div><h2>Tenant isolation first</h2>
+ <div class="cols">
+ <div class="col"><h3>Identity</h3><p>Stateless HMAC-SHA256 JWTs. Roles: GLOBAL_ADMIN, TENANT_ADMIN, TENANT_VIEWER, SERVICE_CLIENT. Client tenant headers are distrusted; queries bind to the principal's tenant and cross-tenant reads return 404.</p></div>
+ <div class="col"><h3>Secrets</h3><p>OAuth tokens encrypted with AES-256-GCM, version-tagged ciphertext so keys can rotate. OAuth state tokens bound to tenant and provider with a 15-minute TTL.</p></div>
+ <div class="col"><h3>Inputs</h3><p>IMAP host validator blocks loopback, private ranges and cloud metadata IPs. Webhooks are checked for authenticity. Document text sent to Gemini is wrapped as untrusted content.</p></div></div>`,
+ n:"Security starts with tenant isolation. Tokens are signed JWTs, and the service ignores any tenant ID a client sends, binding every query to the authenticated tenant instead. Stored OAuth tokens are encrypted with AES 256 GCM and support key rotation. The design also blocks server-side request forgery through custom IMAP hosts, protects the OAuth flow against CSRF, and wraps document text sent to the model to defend against prompt injection."},
+
+{t:"Status & readiness",
+ html:`<div class="eyebrow">Status & readiness</div><h2>Core complete, production credentials pending</h2>
+ <div class="grid"><ul class="pts">
+ <li>All ten modules marked complete, from multi-tenancy to Docker Compose.</li>
+ <li>Production audit found and fixed 9 defects, including outbox rollback, IMAP SSRF and sync race conditions.</li>
+ <li>IMAP verified with GreenMail; Graph and Gmail verified with WireMock.</li></ul>
+ <div class="tablewrap"><table><thead><tr><th>Item</th><th>State</th></tr></thead><tbody>
+ <tr><td>Core services, outbox, storage</td><td><span class="pill g">Verified</span></td></tr>
+ <tr><td>Dashboards &amp; mailbox management</td><td><span class="pill g">Verified</span></td></tr>
+ <tr><td>Azure AD app registration</td><td><span class="pill w">Needs credentials</span></td></tr>
+ <tr><td>Google Cloud OAuth app</td><td><span class="pill w">Needs credentials</span></td></tr></tbody></table></div></div>`,
+ n:"Where does it stand? Every module is implemented, and a production readiness audit found and fixed nine defects, including an outbox rollback gap, an IMAP request forgery risk, and a concurrent sync race. IMAP is verified against GreenMail, and the Microsoft and Gmail connectors against WireMock. The remaining step for live Microsoft 365 and Gmail mailboxes is registering the production OAuth apps and supplying their credentials."},
+
+{t:"Closing",
+ html:`<div class="eyebrow">Wrap-up</div><h1 style="font-size:clamp(30px,5vw,48px)">Connect once. Ingest reliably. Let consumers specialize.</h1>
+ <p class="lede">UMIS owns mailbox connectivity, deduplication, storage and guaranteed delivery. Modules like the PO Processor own the business logic, and report their outcomes back.</p>`,
+ n:"To sum up, UMIS connects mailboxes once, ingests reliably, and guarantees delivery of every event, while consumer modules like the PO Processor handle the business logic and report back. Thanks for watching."}
+];
+
+const stage=document.getElementById('stage'),cap=document.getElementById('captionText'),counter=document.getElementById('counter'),prog=document.getElementById('progress'),playBtn=document.getElementById('play');
+const synth=('speechSynthesis' in window)?window.speechSynthesis:null;
+let i=0,playing=false,voice=null,token=0;
+slides.forEach((s,k)=>{const d=document.createElement('span');d.title=s.t;d.onclick=()=>go(k,true);prog.appendChild(d)});
+function pickVoice(){if(!synth)return;const v=synth.getVoices();voice=v.find(x=>/en[-_](US|GB|IN)/i.test(x.lang)&&/natural|google|neural/i.test(x.name))||v.find(x=>/^en/i.test(x.lang))||null}
+if(synth){pickVoice();synth.onvoiceschanged=pickVoice}else{playBtn.disabled=true;document.getElementById('noSpeech').hidden=false}
+function render(){const s=slides[i];stage.innerHTML=`<div class="slide">${s.html}</div>`;cap.textContent=s.n;counter.textContent=`${i+1} / ${slides.length}`;[...prog.children].forEach((d,k)=>d.className=k<i?'done':k===i?'cur':'')}
+function speak(){if(!synth)return;synth.cancel();const my=++token;const u=new SpeechSynthesisUtterance(slides[i].n);if(voice)u.voice=voice;u.rate=1;u.onend=()=>{if(my!==token||!playing)return;if(i<slides.length-1){i++;render();setTimeout(()=>{if(playing&&my===token)speak()},500)}else{setPlaying(false)}};synth.speak(u)}
+function setPlaying(p){playing=p;playBtn.textContent=p?'❚❚ Pause':'▶ Play';if(!p&&synth){token++;synth.cancel()}}
+function go(k,manual){if(k<0||k>=slides.length)return;i=k;render();if(synth){token++;synth.cancel()}if(playing)speak()}
+playBtn.onclick=()=>{if(!synth)return;if(playing){setPlaying(false)}else{setPlaying(true);speak()}};
+document.getElementById('next').onclick=()=>go(i+1,true);
+document.getElementById('prev').onclick=()=>go(i-1,true);
+document.getElementById('restart').onclick=()=>{go(0,true)};
+document.addEventListener('keydown',e=>{if(e.target.closest('button')&&e.key===' ')return;if(e.key==='ArrowRight')go(i+1);else if(e.key==='ArrowLeft')go(i-1);else if(e.key===' '){e.preventDefault();playBtn.click()}});
+render();
+</script>
+
+</body></html>

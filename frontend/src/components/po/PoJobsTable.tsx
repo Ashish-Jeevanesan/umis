@@ -28,7 +28,6 @@ export const PoJobsTable: React.FC = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const pageSize = 15;
 
-  // Debounce search input
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
@@ -59,8 +58,7 @@ export const PoJobsTable: React.FC = () => {
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—';
     try {
-      const date = new Date(dateStr);
-      return date.toLocaleString('en-US', {
+      return new Date(dateStr).toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
@@ -76,7 +74,6 @@ export const PoJobsTable: React.FC = () => {
       {/* Controls & Filter Bar */}
       <div className="p-4 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-          {/* Search Input */}
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -88,7 +85,6 @@ export const PoJobsTable: React.FC = () => {
             />
           </div>
 
-          {/* Status Filter */}
           <div className="flex items-center gap-1.5">
             <Filter className="w-3.5 h-3.5 text-slate-400" />
             <select
@@ -100,15 +96,17 @@ export const PoJobsTable: React.FC = () => {
               className="bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
             >
               <option value="ALL">All Statuses</option>
-              <option value="READY_FOR_EXTRACTION">Ready for Extraction</option>
+              <option value="READY_FOR_REVIEW">Ready for Review</option>
+              <option value="NEEDS_REVIEW">Needs Review</option>
+              <option value="VERIFIED">Verified</option>
+              <option value="APPROVED">Approved</option>
+              <option value="DUPLICATE">Duplicate</option>
               <option value="PROCESSING">Processing</option>
-              <option value="PENDING">Pending</option>
-              <option value="COMPLETED">Completed</option>
+              <option value="QUEUED">Queued</option>
               <option value="FAILED">Failed</option>
             </select>
           </div>
 
-          {/* Date Range Inputs */}
           <div className="flex items-center gap-1.5 text-xs text-slate-400">
             <Calendar className="w-3.5 h-3.5 text-slate-500" />
             <input
@@ -119,7 +117,6 @@ export const PoJobsTable: React.FC = () => {
                 setPage(0);
               }}
               className="bg-slate-950 border border-slate-700/80 rounded-lg px-2 py-1 text-xs text-slate-200"
-              title="Start Date"
             />
             <span>to</span>
             <input
@@ -130,7 +127,6 @@ export const PoJobsTable: React.FC = () => {
                 setPage(0);
               }}
               className="bg-slate-950 border border-slate-700/80 rounded-lg px-2 py-1 text-xs text-slate-200"
-              title="End Date"
             />
             {(startDate || endDate) && (
               <button
@@ -146,7 +142,6 @@ export const PoJobsTable: React.FC = () => {
           </div>
         </div>
 
-        {/* Action Controls & Auto-refresh */}
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer select-none">
             <input
@@ -169,18 +164,15 @@ export const PoJobsTable: React.FC = () => {
         </div>
       </div>
 
-      {/* Error Banner */}
       {isError && (
         <div className="p-3 bg-rose-500/10 border-b border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
           <span>Error loading jobs: {error instanceof Error ? error.message : 'Failed to query PO Processor'}</span>
-          <button onClick={() => refetch()} className="ml-auto underline font-medium">
-            Retry
-          </button>
+          <button onClick={() => refetch()} className="ml-auto underline font-medium">Retry</button>
         </div>
       )}
 
-      {/* Table Content */}
+      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
@@ -191,7 +183,6 @@ export const PoJobsTable: React.FC = () => {
               <th className="py-3 px-4">Attachments</th>
               <th className="py-3 px-4">Attempts</th>
               <th className="py-3 px-4">Received</th>
-              <th className="py-3 px-4">Last Updated</th>
               <th className="py-3 px-4 text-right">Actions</th>
             </tr>
           </thead>
@@ -205,72 +196,103 @@ export const PoJobsTable: React.FC = () => {
                   <td className="py-3.5 px-4"><div className="h-4 bg-slate-800 rounded w-12" /></td>
                   <td className="py-3.5 px-4"><div className="h-4 bg-slate-800 rounded w-8" /></td>
                   <td className="py-3.5 px-4"><div className="h-4 bg-slate-800 rounded w-20" /></td>
-                  <td className="py-3.5 px-4"><div className="h-4 bg-slate-800 rounded w-20" /></td>
                   <td className="py-3.5 px-4"><div className="h-4 bg-slate-800 rounded w-16 ml-auto" /></td>
                 </tr>
               ))
             ) : jobs.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center text-slate-500">
+                <td colSpan={7} className="py-12 text-center text-slate-500">
                   <Inbox className="w-8 h-8 mx-auto mb-2 text-slate-600" />
                   <p className="font-medium text-slate-400">No processing jobs found</p>
-                  <p className="text-[11px] mt-1">
-                    {debouncedSearch || statusFilter !== 'ALL' || startDate || endDate
-                      ? 'Try adjusting your filters or search terms.'
-                      : 'Jobs will appear here as incoming emails are ingested and delivered over RabbitMQ.'}
-                  </p>
+                  <p className="text-[11px] mt-1">Jobs appear here as incoming emails are ingested from RabbitMQ.</p>
                 </td>
               </tr>
             ) : (
-              jobs.map((job: ProcessingJob) => (
-                <tr
-                  key={job.id}
-                  onClick={() => navigate(`/po/jobs/${job.id}`)}
-                  className="hover:bg-slate-800/40 transition-colors cursor-pointer group"
-                >
-                  <td className="py-3 px-4 font-medium text-white max-w-xs truncate">
-                    <div className="truncate group-hover:text-amber-400 transition-colors">
-                      {job.emailSubject || `Email ${job.umisEmailId.slice(0, 8)}...`}
-                    </div>
-                    <div className="text-[10px] text-slate-500 font-mono mt-0.5 truncate">
-                      Job ID: {job.id.slice(0, 13)}...
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-slate-300 max-w-[180px] truncate">
-                    <div className="truncate">{job.emailSenderName || job.emailSender || 'Unknown'}</div>
-                    {job.emailSender && job.emailSenderName && (
-                      <div className="text-[10px] text-slate-500 truncate">{job.emailSender}</div>
-                    )}
-                  </td>
-                  <td className="py-3 px-4 whitespace-nowrap">
-                    <PoStatusBadge status={job.processingStatus} />
-                  </td>
-                  <td className="py-3 px-4 whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/60">
-                      <Paperclip className="w-3 h-3 text-slate-400" />
-                      <span>{job.attachmentCount ?? job.attachments?.length ?? 0}</span>
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 whitespace-nowrap text-slate-400 font-mono text-[11px]">
-                    {job.processingAttempts}
-                  </td>
-                  <td className="py-3 px-4 whitespace-nowrap text-slate-400">
-                    {formatDate(job.receivedAt)}
-                  </td>
-                  <td className="py-3 px-4 whitespace-nowrap text-slate-400">
-                    {formatDate(job.updatedAt)}
-                  </td>
-                  <td className="py-3 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => navigate(`/po/jobs/${job.id}`)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors"
-                    >
-                      <span>Details</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </button>
-                  </td>
-                </tr>
-              ))
+              jobs.map((job: ProcessingJob) => {
+                const isProcessing =
+                  job.processingStatus === 'PROCESSING' ||
+                  job.processingStatus === 'QUEUED' ||
+                  job.processingStatus === 'PENDING' ||
+                  job.processingStatus === 'READY_FOR_EXTRACTION';
+                const isFailed = job.processingStatus === 'FAILED';
+
+                return (
+                  <tr
+                    key={job.id}
+                    onClick={() => {
+                      if (!isProcessing && !isFailed) {
+                        navigate(`/po/jobs/${job.id}`);
+                      }
+                    }}
+                    className={`transition-colors ${
+                      isProcessing || isFailed
+                        ? 'hover:bg-slate-900/40 cursor-not-allowed opacity-90'
+                        : 'hover:bg-slate-800/40 cursor-pointer group'
+                    }`}
+                  >
+                    <td className="py-3 px-4 font-medium text-white max-w-xs truncate">
+                      <div className="truncate group-hover:text-amber-400 transition-colors">
+                        {job.emailSubject || `Email ${job.umisEmailId.slice(0, 8)}...`}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono mt-0.5 truncate">
+                        Job ID: {job.id.slice(0, 13)}...
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-slate-300 max-w-[180px] truncate">
+                      <div className="truncate">{job.emailSenderName || job.emailSender || 'Unknown'}</div>
+                      {job.emailSender && job.emailSenderName && (
+                        <div className="text-[10px] text-slate-500 truncate">{job.emailSender}</div>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <div className="space-y-1">
+                        <PoStatusBadge status={job.processingStatus} />
+                        {isProcessing && (
+                          <div className="w-24 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="bg-sky-500 h-1.5 rounded-full transition-all duration-300"
+                              style={{ width: `${job.progressPercentage || 15}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/60">
+                        <Paperclip className="w-3 h-3 text-slate-400" />
+                        <span>{job.attachmentCount ?? job.attachments?.length ?? 0}</span>
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap text-slate-400 font-mono text-[11px]">
+                      {job.processingAttempts}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap text-slate-400">
+                      {formatDate(job.receivedAt)}
+                    </td>
+                    <td className="py-3 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      {isProcessing ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-sky-400 bg-sky-500/10 border border-sky-500/30 rounded-lg">
+                          <RefreshCw className="w-3 h-3 animate-spin text-sky-400" />
+                          <span>{job.progressPercentage ? `${job.progressPercentage}%` : 'Processing'}</span>
+                        </span>
+                      ) : isFailed ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg cursor-not-allowed">
+                          <AlertCircle className="w-3 h-3 text-rose-400" />
+                          <span>Failed</span>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => navigate(`/po/jobs/${job.id}`)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors"
+                        >
+                          <span>Review</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

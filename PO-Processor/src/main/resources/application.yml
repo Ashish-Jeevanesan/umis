@@ -22,7 +22,7 @@ spring:
     baseline-on-migrate: true
     baseline-version: 0
   jpa:
-    open-in-view: false
+    open-in-view: true
     hibernate:
       ddl-auto: validate
     properties:
@@ -50,6 +50,23 @@ po:
   storage:
     type: ${PO_STORAGE_TYPE:LOCAL}
     local-base-path: ${PO_STORAGE_LOCAL_BASE_PATH:../backend/storage}
+  attachment:
+    max-file-size-bytes: ${PO_MAX_ATTACHMENT_SIZE_BYTES:26214400}
+    max-total-size-bytes: ${PO_MAX_TOTAL_ATTACHMENT_BYTES:104857600}
+    max-pdf-pages: ${PO_MAX_PDF_PAGES:50}
+    max-docx-chars: ${PO_MAX_DOCX_CHARS:500000}
+    max-image-dimension: ${PO_MAX_IMAGE_DIMENSION:4096}
+  worker:
+    poll-interval-ms: ${PO_WORKER_POLL_INTERVAL_MS:3000}
+    max-retries: ${PO_WORKER_MAX_RETRIES:3}
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-3.8-flash}
+    enabled: ${GEMINI_ENABLED:true}
+    base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+    timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:60}
+    max-output-tokens: ${GEMINI_MAX_OUTPUT_TOKENS:8192}
+    max-retries: ${GEMINI_MAX_RETRIES:3}
 
 umis:
   base-url: ${UMIS_BASE_URL:http://localhost:8080}
@@ -68,6 +85,10 @@ management:
       show-details: always
 
 logging:
+  file:
+    name: ${LOG_FILE:log/po-processor.log}
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
   level:
     root: INFO
     com.po.processor: DEBUG

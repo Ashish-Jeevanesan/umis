@@ -65,6 +65,9 @@ public class ProcessingJob {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
+
     @Column(name = "email_subject", length = 500)
     private String emailSubject;
 
@@ -76,6 +79,18 @@ public class ProcessingJob {
 
     @Column(name = "email_recipients", columnDefinition = "TEXT")
     private String emailRecipients;
+
+    @Column(name = "body_storage_ref", length = 500)
+    private String bodyStorageRef;
+
+    @jakarta.persistence.Embedded
+    private JobWorkerLease workerLease = new JobWorkerLease();
+
+    @jakarta.persistence.Embedded
+    private JobExtractedSummary extractedSummary = new JobExtractedSummary();
+
+    @jakarta.persistence.Embedded
+    private JobProcessingProgress progress = new JobProcessingProgress();
 
     @OneToMany(mappedBy = "processingJob", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ProcessingJobAttachment> attachments = new ArrayList<>();
@@ -252,5 +267,40 @@ public class ProcessingJob {
 
     public void setEmailRecipients(String emailRecipients) {
         this.emailRecipients = emailRecipients;
+    }
+
+    public JobWorkerLease getWorkerLease() {
+        return workerLease;
+    }
+
+    public void setWorkerLease(JobWorkerLease workerLease) {
+        this.workerLease = workerLease;
+    }
+
+    public JobExtractedSummary getExtractedSummary() {
+        return extractedSummary;
+    }
+
+    public void setExtractedSummary(JobExtractedSummary extractedSummary) {
+        this.extractedSummary = extractedSummary;
+    }
+
+    public String getBodyStorageRef() {
+        return bodyStorageRef;
+    }
+
+    public void setBodyStorageRef(String bodyStorageRef) {
+        this.bodyStorageRef = bodyStorageRef;
+    }
+
+    public JobProcessingProgress getProgress() { return progress; }
+    public void setProgress(JobProcessingProgress progress) { this.progress = progress; }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 }

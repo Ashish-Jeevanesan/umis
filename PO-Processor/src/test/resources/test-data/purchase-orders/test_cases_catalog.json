@@ -1,0 +1,602 @@
+[
+  {
+    "caseId": 1,
+    "name": "Standard table-based purchase order",
+    "category": "DIGITAL_PDF",
+    "emailSubject": "Purchase Order PO-1001 Attached",
+    "emailBody": "Please find attached Purchase Order PO-1001 for Boston Medical Center.",
+    "attachmentName": "PO_1001_Boston.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-1001\nDate: 2026-11-01\nHospital: Boston Medical Center\nVendor: Stryker Orthopaedics\nItems:\n1 | SKU-100 | Knee Joint Implant | Qty: 2 | Price: 3500.00 | Total: 7000.00\nSubtotal: 7000.00\nTax: 350.00\nGrand Total: 7350.00 USD",
+    "expected": {
+      "poNumber": "PO-1001",
+      "hospitalName": "boston-medical",
+      "vendorName": "Stryker Orthopaedics",
+      "currency": "USD",
+      "grandTotal": 7350.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 2,
+    "name": "Modern corporate branded PO",
+    "category": "DIGITAL_PDF",
+    "emailSubject": "Globus Medical Order GLB-8802",
+    "emailBody": "Attached order GLB-8802 for processing.",
+    "attachmentName": "GLB_8802_Order.pdf",
+    "attachmentText": "ORDER CONFIRMATION GLB-8802\nClient: St. Jude Hospital\nSupplier: Globus Medical Inc.\nTotal: 12500.00 EUR\nItem: Spinal Fusion Cage, 5 Units @ 2500.00",
+    "expected": {
+      "poNumber": "GLB-8802",
+      "hospitalName": "st-jude",
+      "vendorName": "Globus Medical Inc.",
+      "currency": "EUR",
+      "grandTotal": 12500.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 3,
+    "name": "Hospital-specific PO layout",
+    "category": "DIGITAL_PDF",
+    "emailSubject": "Mount Sinai Hospital Procurement",
+    "emailBody": "Procurement department PO-MS-441 attached.",
+    "attachmentName": "MS_PO_441.pdf",
+    "attachmentText": "MOUNT SINAI HEALTH SYSTEM - OFFICIAL PO\nOrder Number: PO-MS-441\nVendor: Medtronic Spine\nAmount: 4500.00 USD\nPayment Terms: Net 60",
+    "expected": {
+      "poNumber": "PO-MS-441",
+      "hospitalName": "mount-sinai",
+      "vendorName": "Medtronic Spine",
+      "currency": "USD",
+      "grandTotal": 4500.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 4,
+    "name": "Multi-page purchase order",
+    "category": "DIGITAL_PDF",
+    "emailSubject": "Multi-page order PO-MP-900",
+    "emailBody": "Please review multi-page order PO-MP-900.",
+    "attachmentName": "MultiPage_PO_900.pdf",
+    "attachmentText": "[Page 1] PURCHASE ORDER: PO-MP-900\nHospital: Cleveland Clinic\nVendor: Zimmer Biomet\n[Page 2] Items: Hip Stem x4 ($8000), Cup x4 ($4000)\nGrand Total: 12000.00 USD",
+    "expected": {
+      "poNumber": "PO-MP-900",
+      "hospitalName": "cleveland-clinic",
+      "vendorName": "Zimmer Biomet",
+      "currency": "USD",
+      "grandTotal": 12000.00,
+      "lineItemCount": 2,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 5,
+    "name": "Purchase order with multiple tax rates",
+    "category": "LAYOUT_CURRENCY",
+    "emailSubject": "Order with split VAT PO-TAX-55",
+    "emailBody": "Order PO-TAX-55 attached.",
+    "attachmentName": "PO_TAX_55.pdf",
+    "attachmentText": "PO: PO-TAX-55\nHospital: Charité Berlin\nVendor: B. Braun\nItem 1: Implant 5000.00 (Tax 19%: 950.00)\nItem 2: Bandages 1000.00 (Tax 7%: 70.00)\nSubtotal: 6000.00\nTotal Tax: 1020.00\nGrand Total: 7020.00 EUR",
+    "expected": {
+      "poNumber": "PO-TAX-55",
+      "hospitalName": "charite-berlin",
+      "vendorName": "B. Braun",
+      "currency": "EUR",
+      "grandTotal": 7020.00,
+      "lineItemCount": 2,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 6,
+    "name": "Purchase order with discounts",
+    "category": "LAYOUT_CURRENCY",
+    "emailSubject": "Discounted PO-DISC-10",
+    "emailBody": "Order PO-DISC-10 with 10% volume discount.",
+    "attachmentName": "PO_DISC_10.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-DISC-10\nHospital: Mayo Clinic\nVendor: Johnson & Johnson\nSubtotal: 10000.00 USD\nDiscount: 1000.00 USD\nGrand Total: 9000.00 USD",
+    "expected": {
+      "poNumber": "PO-DISC-10",
+      "hospitalName": "mayo",
+      "vendorName": "Johnson & Johnson",
+      "currency": "USD",
+      "grandTotal": 9000.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 7,
+    "name": "Purchase order with shipping charges",
+    "category": "LAYOUT_CURRENCY",
+    "emailSubject": "Freight Included PO-FRT-20",
+    "emailBody": "PO-FRT-20 including courier charges.",
+    "attachmentName": "PO_FRT_20.pdf",
+    "attachmentText": "ORDER: PO-FRT-20\nHospital: Johns Hopkins Hospital\nVendor: NuVasive\nSubtotal: 8000.00 USD\nShipping/Freight: 250.00 USD\nGrand Total: 8250.00 USD",
+    "expected": {
+      "poNumber": "PO-FRT-20",
+      "hospitalName": "johns-hopkins",
+      "vendorName": "NuVasive",
+      "currency": "USD",
+      "grandTotal": 8250.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 8,
+    "name": "Purchase order with EUR currency",
+    "category": "LAYOUT_CURRENCY",
+    "emailSubject": "European Order PO-EUR-70",
+    "emailBody": "PO-EUR-70 for 14500 EUR.",
+    "attachmentName": "PO_EUR_70.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-EUR-70\nHospital: Hôpital Necker Paris\nVendor: Spineart Europe\nTotal Amount: €14,500.00 EUR",
+    "expected": {
+      "poNumber": "PO-EUR-70",
+      "hospitalName": "hopital-necker-paris",
+      "vendorName": "Spineart Europe",
+      "currency": "EUR",
+      "grandTotal": 14500.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 9,
+    "name": "Purchase order with USD currency",
+    "category": "LAYOUT_CURRENCY",
+    "emailSubject": "US Order PO-USD-99",
+    "emailBody": "PO-USD-99 for $32,000.00 USD.",
+    "attachmentName": "PO_USD_99.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-USD-99\nHospital: UCLA Medical Center\nVendor: Arthrex\nGrand Total: $32,000.00 USD",
+    "expected": {
+      "poNumber": "PO-USD-99",
+      "hospitalName": "ucla",
+      "vendorName": "Arthrex",
+      "currency": "USD",
+      "grandTotal": 32000.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 10,
+    "name": "Purchase order with INR currency",
+    "category": "LAYOUT_CURRENCY",
+    "emailSubject": "Indian Hospital Order PO-INR-50",
+    "emailBody": "Order PO-INR-50 for ₹450,000 INR.",
+    "attachmentName": "PO_INR_50.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-INR-50\nHospital: Apollo Hospitals Chennai\nVendor: Smith & Nephew India\nTotal: ₹450,000.00 INR",
+    "expected": {
+      "poNumber": "PO-INR-50",
+      "hospitalName": "apollo-chennai",
+      "vendorName": "Smith & Nephew India",
+      "currency": "INR",
+      "grandTotal": 450000.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 11,
+    "name": "Purchase order with unusual line-item columns",
+    "category": "DIGITAL_PDF",
+    "emailSubject": "Unusual columns PO-UNU-11",
+    "emailBody": "Order PO-UNU-11 with custom format.",
+    "attachmentName": "PO_UNU_11.pdf",
+    "attachmentText": "PO: PO-UNU-11\nHospital: Toronto General Hospital\nVendor: KLS Martin\n[COLUMNS: Barcode | Ref# | Description | PackSize | ExtendedPrice]\n1234567 | KLS-99 | Titanium Mesh | 1 Box | 3200.00 USD\nTotal: 3200.00 USD",
+    "expected": {
+      "poNumber": "PO-UNU-11",
+      "hospitalName": "toronto-general",
+      "vendorName": "KLS Martin",
+      "currency": "USD",
+      "grandTotal": 3200.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 12,
+    "name": "PO with long product descriptions",
+    "category": "DIGITAL_PDF",
+    "emailSubject": "Long description PO-LONG-12",
+    "emailBody": "PO-LONG-12 with technical spec details.",
+    "attachmentName": "PO_LONG_12.pdf",
+    "attachmentText": "PO: PO-LONG-12\nHospital: Stanford Health Care\nVendor: DePuy Synthes\nLine 1: Sterile Anterior Cervical Interbody Fusion Spacer System with Integrated Screws, PEEK-OPTIMA Polymer, 14x12x6mm, 4 Degree Lordosis, Sterile Packaged\nQty: 2, Unit: 2100.00, Total: 4200.00 USD\nGrand Total: 4200.00 USD",
+    "expected": {
+      "poNumber": "PO-LONG-12",
+      "hospitalName": "stanford-health-care",
+      "vendorName": "DePuy Synthes",
+      "currency": "USD",
+      "grandTotal": 4200.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 13,
+    "name": "PO with multiple pages of line items",
+    "category": "DIGITAL_PDF",
+    "emailSubject": "Bulk Lines PO-BULK-13",
+    "emailBody": "PO-BULK-13 with 15 line items across pages.",
+    "attachmentName": "PO_BULK_13.pdf",
+    "attachmentText": "PO: PO-BULK-13\nHospital: Texas Medical Center\nVendor: Stryker Spine\nPage 1: Items 1 to 5 Total: 5000.00\nPage 2: Items 6 to 10 Total: 5000.00\nPage 3: Items 11 to 15 Total: 5000.00\nGrand Total: 15000.00 USD",
+    "expected": {
+      "poNumber": "PO-BULK-13",
+      "hospitalName": "texas-medical-center",
+      "vendorName": "Stryker Spine",
+      "currency": "USD",
+      "grandTotal": 15000.00,
+      "lineItemCount": 3,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 14,
+    "name": "Scanned PDF purchase order",
+    "category": "SCANNED_PDF",
+    "emailSubject": "Scanned document PO-SCAN-14",
+    "emailBody": "Sending scanned copy of PO-SCAN-14.",
+    "attachmentName": "Scanned_PO_14.pdf",
+    "attachmentText": "PURCHASE ORDER NO: PO-SCAN-14\nHOSPITAL: Northwestern Memorial Hospital\nSUPPLIER: Globus Medical\nTOTAL: $6,500.00 USD",
+    "expected": {
+      "poNumber": "PO-SCAN-14",
+      "hospitalName": "northwestern-memorial",
+      "vendorName": "Globus Medical",
+      "currency": "USD",
+      "grandTotal": 6500.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 15,
+    "name": "Low-quality scanned PDF",
+    "category": "SCANNED_PDF",
+    "emailSubject": "Low-quality scan PO-SCAN-15",
+    "emailBody": "Faxed scan PO-SCAN-15 attached.",
+    "attachmentName": "Fax_Scan_15.pdf",
+    "attachmentText": "PO: PO-SCAN-15\nHosp: Cedars-Sinai Medical Center\nVendor: Zimmer Spine\nGrand Total: 8,800.00 USD",
+    "expected": {
+      "poNumber": "PO-SCAN-15",
+      "hospitalName": "cedars-sinai",
+      "vendorName": "Zimmer Spine",
+      "currency": "USD",
+      "grandTotal": 8800.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 16,
+    "name": "Rotated scanned document",
+    "category": "SCANNED_PDF",
+    "emailSubject": "Rotated scan PO-ROT-16",
+    "emailBody": "PO-ROT-16 attached.",
+    "attachmentName": "Rotated_PO_16.pdf",
+    "attachmentText": "ROTATED 90 DEG: PURCHASE ORDER PO-ROT-16\nHospital: Mount Sinai\nVendor: Medtronic\nTotal: 3400.00 USD",
+    "expected": {
+      "poNumber": "PO-ROT-16",
+      "hospitalName": "mount-sinai",
+      "vendorName": "Medtronic",
+      "currency": "USD",
+      "grandTotal": 3400.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 17,
+    "name": "Image-based purchase order (PNG/JPEG)",
+    "category": "IMAGE_BASED",
+    "emailSubject": "Image snapshot PO-IMG-17",
+    "emailBody": "Mobile photo of order PO-IMG-17 attached.",
+    "attachmentName": "PO_Photo_17.png",
+    "attachmentText": "IMAGE OCR: PURCHASE ORDER PO-IMG-17\nHospital: Duke University Hospital\nVendor: Stryker\nGrand Total: 5200.00 USD",
+    "expected": {
+      "poNumber": "PO-IMG-17",
+      "hospitalName": "duke-university",
+      "vendorName": "Stryker",
+      "currency": "USD",
+      "grandTotal": 5200.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 18,
+    "name": "Purchase order with handwritten annotations",
+    "category": "IMAGE_BASED",
+    "emailSubject": "Annotated Order PO-ANN-18",
+    "emailBody": "PO-ANN-18 with surgeon notes.",
+    "attachmentName": "Annotated_PO_18.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-ANN-18\nHospital: St. Jude Hospital\nVendor: Globus Medical\n[Handwritten note: Deliver to OR 4 before 7 AM]\nTotal: 9400.00 USD",
+    "expected": {
+      "poNumber": "PO-ANN-18",
+      "hospitalName": "st-jude",
+      "vendorName": "Globus Medical",
+      "currency": "USD",
+      "grandTotal": 9400.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 19,
+    "name": "PO with missing fields",
+    "category": "DIGITAL_PDF",
+    "emailSubject": "Incomplete order PO-MISS-19",
+    "emailBody": "Order PO-MISS-19 missing delivery date.",
+    "attachmentName": "PO_MISS_19.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-MISS-19\nHospital: General Hospital\nVendor: NuVasive\nGrand Total: 2100.00 USD",
+    "expected": {
+      "poNumber": "PO-MISS-19",
+      "hospitalName": "general-hospital",
+      "vendorName": "NuVasive",
+      "currency": "USD",
+      "grandTotal": 2100.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 20,
+    "name": "PO with inconsistent totals",
+    "category": "CONFLICTING",
+    "emailSubject": "Math discrepancy PO-ERR-20",
+    "emailBody": "Please check PO-ERR-20.",
+    "attachmentName": "PO_ERR_20.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-ERR-20\nSubtotal: 5000.00 USD\nTax: 500.00 USD\nStated Grand Total: 6200.00 USD (math error)",
+    "expected": {
+      "poNumber": "PO-ERR-20",
+      "hospitalName": "general-hospital",
+      "vendorName": "Sample Vendor LLC",
+      "currency": "USD",
+      "grandTotal": 6200.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 21,
+    "name": "PO with conflicting dates",
+    "category": "CONFLICTING",
+    "emailSubject": "Date conflict PO-DATES-21",
+    "emailBody": "Email says deliver on Nov 10, attachment says Nov 15.",
+    "attachmentName": "PO_DATES_21.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-DATES-21\nRequested Delivery Date: 2026-11-15\nTotal: 4000.00 USD",
+    "expected": {
+      "poNumber": "PO-DATES-21",
+      "hospitalName": "general-hospital",
+      "vendorName": "Sample Vendor LLC",
+      "currency": "USD",
+      "grandTotal": 4000.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "ATTACHMENT_ONLY_RELEVANT",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 22,
+    "name": "PO with conflicting email and attachment details",
+    "category": "CONFLICTING",
+    "emailSubject": "Conflicting order PO-CONF-22",
+    "emailBody": "Order PO-CONF-22 is for total $5,000.00 USD.",
+    "attachmentName": "PO_CONF_22.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-CONF-22\nGrand Total: 8500.00 USD",
+    "expected": {
+      "poNumber": "PO-CONF-22",
+      "hospitalName": "general-hospital",
+      "vendorName": "Sample Vendor LLC",
+      "currency": "USD",
+      "grandTotal": 8500.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_ATTACHMENT_MISMATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 23,
+    "name": "Email containing all PO details but no attachment",
+    "category": "EMAIL_ONLY",
+    "emailSubject": "Direct Order PO-BODY-23",
+    "emailBody": "PURCHASE ORDER: PO-BODY-23\nHospital: Mercy Hospital\nVendor: Globus Medical\nLine Item: Titanium Rods x10 ($1000)\nGrand Total: 1000.00 USD",
+    "attachmentName": null,
+    "attachmentText": null,
+    "expected": {
+      "poNumber": "PO-BODY-23",
+      "hospitalName": "mercy",
+      "vendorName": "Globus Medical",
+      "currency": "USD",
+      "grandTotal": 1000.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_ONLY_RELEVANT",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 24,
+    "name": "Email with irrelevant body and valid PO attachment",
+    "category": "ATTACHMENT_ONLY",
+    "emailSubject": "Fwd: Lunch meeting tomorrow",
+    "emailBody": "Hi John, let's meet at noon. By the way, here is the file you requested.",
+    "attachmentName": "Official_PO_24.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-VALID-24\nHospital: Stanford Hospital\nVendor: Medtronic\nGrand Total: 11000.00 USD",
+    "expected": {
+      "poNumber": "PO-VALID-24",
+      "hospitalName": "stanford",
+      "vendorName": "Medtronic",
+      "currency": "USD",
+      "grandTotal": 11000.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "ATTACHMENT_ONLY_RELEVANT",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 25,
+    "name": "Email body and attachment containing matching information",
+    "category": "DIGITAL_PDF",
+    "emailSubject": "Purchase Order PO-MATCH-25 Confirmed",
+    "emailBody": "Purchase Order PO-MATCH-25 for total $14,000.00 USD attached.",
+    "attachmentName": "PO_MATCH_25.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-MATCH-25\nHospital: Boston Children's Hospital\nVendor: Globus Medical\nGrand Total: 14000.00 USD",
+    "expected": {
+      "poNumber": "PO-MATCH-25",
+      "hospitalName": "boston",
+      "vendorName": "Globus Medical",
+      "currency": "USD",
+      "grandTotal": 14000.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 26,
+    "name": "Email body and attachment containing mismatched amounts",
+    "category": "CONFLICTING",
+    "emailSubject": "Order PO-MISMATCH-26",
+    "emailBody": "Attached PO-MISMATCH-26 for total $20,000.00 USD.",
+    "attachmentName": "PO_MISMATCH_26.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-MISMATCH-26\nGrand Total: 25000.00 USD",
+    "expected": {
+      "poNumber": "PO-MISMATCH-26",
+      "hospitalName": "general-hospital",
+      "vendorName": "Sample Vendor LLC",
+      "currency": "USD",
+      "grandTotal": 25000.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_ATTACHMENT_MISMATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 27,
+    "name": "Multiple attachments containing different document types",
+    "category": "ATTACHMENT_ONLY",
+    "emailSubject": "Order Packet PO-MULTI-27",
+    "emailBody": "Order packet attached: PO, Tax Invoice, and Specs.",
+    "attachmentName": "PO_MULTI_27.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-MULTI-27\nHospital: Cleveland Clinic\nVendor: Stryker\nGrand Total: 18500.00 USD",
+    "expected": {
+      "poNumber": "PO-MULTI-27",
+      "hospitalName": "cleveland-clinic",
+      "vendorName": "Stryker",
+      "currency": "USD",
+      "grandTotal": 18500.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "NONE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 28,
+    "name": "Exact duplicate PO document",
+    "category": "DUPLICATE_REVISED",
+    "emailSubject": "Resending PO-DUP-28",
+    "emailBody": "Resending PO-DUP-28 in case you missed it.",
+    "attachmentName": "PO_DUP_28.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-DUP-28\nHospital: Mayo Clinic\nGrand Total: 5000.00 USD",
+    "expected": {
+      "poNumber": "PO-DUP-28",
+      "hospitalName": "mayo",
+      "vendorName": "Sample Vendor LLC",
+      "currency": "USD",
+      "grandTotal": 5000.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "EXACT_DUPLICATE",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 29,
+    "name": "Revised/amended purchase order",
+    "category": "DUPLICATE_REVISED",
+    "emailSubject": "REVISION: PO-REV-29",
+    "emailBody": "Please note revised quantities on PO-REV-29.",
+    "attachmentName": "PO_REV_29_V2.pdf",
+    "attachmentText": "PURCHASE ORDER: PO-REV-29 (REVISION 2)\nHospital: Mayo Clinic\nGrand Total: 7500.00 USD",
+    "expected": {
+      "poNumber": "PO-REV-29",
+      "hospitalName": "mayo",
+      "vendorName": "Sample Vendor LLC",
+      "currency": "USD",
+      "grandTotal": 7500.00,
+      "lineItemCount": 1,
+      "comparisonStatus": "BODY_AND_ATTACHMENT_MATCH",
+      "duplicateType": "REVISED_PO",
+      "classification": "PURCHASE_ORDER"
+    }
+  },
+  {
+    "caseId": 30,
+    "name": "Document that is not a purchase order",
+    "category": "NON_PO",
+    "emailSubject": "Team Newsletter November",
+    "emailBody": "Here is the internal company newsletter.",
+    "attachmentName": "Newsletter_Nov.pdf",
+    "attachmentText": "INTERNAL COMPANY NEWSLETTER\nMonthly updates and team announcements.\nNo purchase orders or financial transactions.",
+    "expected": {
+      "poNumber": null,
+      "hospitalName": null,
+      "vendorName": null,
+      "currency": null,
+      "grandTotal": 0.00,
+      "lineItemCount": 0,
+      "comparisonStatus": "NO_PURCHASE_ORDER_FOUND",
+      "duplicateType": "NONE",
+      "classification": "UNRELATED"
+    }
+  }
+]

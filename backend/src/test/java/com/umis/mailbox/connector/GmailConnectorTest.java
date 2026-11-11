@@ -305,4 +305,65 @@ class GmailConnectorTest {
         assertEquals("h:999111", result.newCursor());
         mockServer.verify();
     }
+
+    @Test
+    @DisplayName("Gmail: Attachments with attachmentId are downloaded from Gmail attachment API and normalized")
+    void testFetchMessageDownloadsExternalAttachments() {
+        String strMessageId = "msg_with_pdf";
+        byte[] expectedPdfBytes = "%PDF-1.4 Mock PO content".getBytes(StandardCharsets.UTF_8);
+        String base64UrlData = Base64.getUrlEncoder().withoutPadding().encodeToString(expectedPdfBytes);
+
+        String strMessageResponse = """
+            {
+              "id": "msg_with_pdf",
+              "internalDate": "1700000000000",
+              "snippet": "PO attached",
+              "payload": {
+                "headers": [
+                  {"name": "Subject", "value": "Purchase Order PO-900"},
+                  {"name": "From", "value": "supplier@test.com"}
+                ],
+                "parts": [
+                  {
+                    "mimeType": "text/plain",
+                    "body": {"data": "UGxlYXNlIGZpbmQgUE8="}
+                  },
+                  {
+                    "filename": "PO_900.pdf",
+                    "mimeType": "application/pdf",
+                    "body": {
+                      "size": 24,
+                      "attachmentId": "att_pdf_12345"
+                    }
+                  }
+                ]
+              }
+            }
+            """;
+
+        String strAttachmentResponse = """
+            {
+              "size": 24,
+              "data": "%s"
+            }
+            """.formatted(base64UrlData);
+
+        mockServer.expect(requestTo("https://gmail.googleapis.com/gmail/v1/users/me/messages/msg_with_pdf?format=full"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(strMessageResponse, MediaType.APPLICATION_JSON));
+
+        mockServer.expect(requestTo(
+                "https://gmail.googleapis.com/gmail/v1/users/me/messages/msg_with_pdf/attachments/att_pdf_12345"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(strAttachmentResponse, MediaType.APPLICATION_JSON));
+
+        NormalizedEmail email = connector.fetchMessage(connection, credentials, strMessageId);
+
+        assertNotNull(email);
+        assertEquals(1, email.attachments().size());
+        assertEquals("PO_900.pdf", email.attachments().get(0).fileName());
+        assertEquals("application/pdf", email.attachments().get(0).contentType());
+        assertEquals(expectedPdfBytes.length, email.attachments().get(0).sizeBytes());
+        mockServer.verify();
+    }
 }
